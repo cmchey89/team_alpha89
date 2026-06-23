@@ -185,7 +185,7 @@ export async function generateDrawingPdf(data: DrawingData) {
     const color = UTILITY_COLORS[c.utilityType] || '#9E9E9E';
     const [r, g, b] = hexToRgb(color);
     doc.setDrawColor(r, g, b);
-    doc.setLineWidth(0.6);
+    doc.setLineWidth(2);
     const pts = coords.map(([lng, lat]: number[]) => project(lng, lat));
     for (let i = 0; i < pts.length - 1; i++) {
       doc.line(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
