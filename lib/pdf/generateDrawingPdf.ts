@@ -137,6 +137,10 @@ export async function generateDrawingPdf(data: DrawingData) {
   doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, pageW, pageH, 'F');
 
+  // --- Map area white background (shows under tiles and fills any gaps) ---
+  doc.setFillColor(255, 255, 255);
+  doc.rect(mapX, mapY, mapW, mapH, 'F');
+
   // --- Map background using OSM tiles ---
   await drawOsmTiles(doc, mapX, mapY, mapW, mapH, minLng, maxLng, minLat, maxLat);
   doc.setDrawColor(100, 100, 100);
