@@ -15,7 +15,7 @@ import { insertInfraLines } from '@/lib/db/spatial';
 import { requireUser } from '@/lib/auth/session';
 
 const FeatureInput = z.object({
-  utilityType: z.enum(['electrical', 'water', 'gas', 'telecom', 'other']),
+  utilityType: z.enum(['telecom_pipe', 'manhole', 'other']),
   label: z.string().nullable().optional(),
   sourceProperties: z.record(z.unknown()).nullable().optional(),
   geometry: z.object({

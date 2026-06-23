@@ -15,22 +15,18 @@ const MapContainer = dynamic(() => import('react-leaflet').then((m) => m.MapCont
 const TileLayer    = dynamic(() => import('react-leaflet').then((m) => m.TileLayer), { ssr: false });
 const Polyline     = dynamic(() => import('react-leaflet').then((m) => m.Polyline), { ssr: false });
 
-type UtilityType = 'electrical' | 'water' | 'gas' | 'telecom' | 'other';
+type UtilityType = 'telecom_pipe' | 'manhole' | 'other';
 
 const UTILITY_TYPES: { key: UtilityType; label: string }[] = [
-  { key: 'electrical', label: 'HV Electrical' },
-  { key: 'water',      label: 'Water Main' },
-  { key: 'gas',        label: 'Gas Line' },
-  { key: 'telecom',    label: 'Telecom Duct' },
-  { key: 'other',      label: 'Other' },
+  { key: 'telecom_pipe', label: 'Telecom Pipe' },
+  { key: 'manhole',      label: 'Manhole' },
+  { key: 'other',        label: 'Other' },
 ];
 
 const UTILITY_COLORS: Record<string, string> = {
-  electrical: '#FFD700',
-  water:      '#2196F3',
-  gas:        '#FF9800',
-  telecom:    '#9C27B0',
-  other:      '#9E9E9E',
+  telecom_pipe: '#9C27B0',
+  manhole:      '#FF9800',
+  other:        '#9E9E9E',
 };
 
 interface InfraLine {

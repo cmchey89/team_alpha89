@@ -50,7 +50,7 @@ export const infraLines = pgTable('infra_lines', {
   ownerId: uuid('owner_id').notNull().references(() => users.id),
   sourceUploadId: uuid('source_upload_id'),
   utilityType: text('utility_type', {
-    enum: ['electrical', 'water', 'gas', 'telecom', 'other'],
+    enum: ['telecom_pipe', 'manhole', 'other'],
   }).notNull().default('other'),
   label: text('label'),
   // Original attribute fields from the uploaded GIS file, preserved as-is

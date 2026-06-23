@@ -3,19 +3,15 @@
 import { jsPDF } from 'jspdf';
 
 const UTILITY_COLORS: Record<string, string> = {
-  electrical: '#FFD700',
-  water:      '#2196F3',
-  gas:        '#FF9800',
-  telecom:    '#9C27B0',
-  other:      '#9E9E9E',
+  telecom_pipe: '#9C27B0',
+  manhole:      '#FF9800',
+  other:        '#9E9E9E',
 };
 
 const UTILITY_LABELS: Record<string, string> = {
-  electrical: 'Electrical',
-  water:      'Water',
-  gas:        'Gas',
-  telecom:    'Telecom',
-  other:      'Other',
+  telecom_pipe: 'Telecom Pipe',
+  manhole:      'Manhole',
+  other:        'Other',
 };
 
 interface Conflict {

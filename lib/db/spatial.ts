@@ -62,7 +62,7 @@ export async function findConflicts(
 export async function insertInfraLines(rows: {
   ownerId: string;
   sourceUploadId?: string;
-  utilityType: 'electrical' | 'water' | 'gas' | 'telecom' | 'other';
+  utilityType: 'telecom_pipe' | 'manhole' | 'other';
   label?: string;
   sourceProperties?: Record<string, unknown>;
   geometry: LineString;
