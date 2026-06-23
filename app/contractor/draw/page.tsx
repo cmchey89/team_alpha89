@@ -7,14 +7,16 @@ import 'leaflet/dist/leaflet.css';
 import type { LatLngTuple } from 'leaflet';
 import Navbar from '@/components/Navbar';
 import { generateDrawingPdf } from '@/lib/pdf/generateDrawingPdf';
+import type { MapView } from '@/components/MapTracker';
 
 // react-leaflet's MapContainer touches `window` at import time, which
 // breaks Next.js's server-side render pass. Dynamic-importing with
 // ssr: false defers it to the client, same reasoning as any Leaflet-in-
 // Next.js setup.
 const MapContainer = dynamic(() => import('react-leaflet').then((m) => m.MapContainer), { ssr: false });
-const TileLayer = dynamic(() => import('react-leaflet').then((m) => m.TileLayer), { ssr: false });
-const ZoneDrawer = dynamic(() => import('@/components/ZoneDrawer'), { ssr: false });
+const TileLayer    = dynamic(() => import('react-leaflet').then((m) => m.TileLayer), { ssr: false });
+const ZoneDrawer   = dynamic(() => import('@/components/ZoneDrawer'), { ssr: false });
+const MapTracker   = dynamic(() => import('@/components/MapTracker'), { ssr: false });
 
 const TAI_SENG_CENTER: LatLngTuple = [1.3358, 103.8879];
 
@@ -54,6 +56,7 @@ export default function ContractorDrawPage() {
   const [result, setResult] = useState<CheckResult | null>(null);
   const [releaseData, setReleaseData] = useState<any>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [mapView, setMapView] = useState<MapView | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handlePointAdded = useCallback((p: LatLngTuple) => {
@@ -141,6 +144,7 @@ export default function ContractorDrawPage() {
             onPointAdded={handlePointAdded}
             onDoubleClickFinish={finishDrawing}
           />
+          <MapTracker onChange={setMapView} />
         </MapContainer>
 
         <div style={{ position: 'absolute', top: 14, right: 14, zIndex: 500, display: 'flex', gap: 8 }}>
@@ -209,6 +213,7 @@ export default function ContractorDrawPage() {
                     conflicts: releaseData.conflicts,
                     zoneGeoJSON: releaseData.zoneGeoJSON,
                     contractorEmail: 'cmchey89@gmail.com',
+                    mapView: mapView ?? undefined,
                   });
                 } finally {
                   setGeneratingPdf(false);

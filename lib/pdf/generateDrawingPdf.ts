@@ -21,11 +21,17 @@ interface Conflict {
   geometry: { type: string; coordinates: any };
 }
 
+interface MapView {
+  zoom: number;
+  bounds: { minLng: number; maxLng: number; minLat: number; maxLat: number };
+}
+
 interface DrawingData {
   reference: string;
   conflicts: Conflict[];
   zoneGeoJSON: { type: string; coordinates: any } | null;
   contractorEmail: string;
+  mapView?: MapView;
 }
 
 function lon2tile(lon: number, zoom: number) { return Math.floor((lon + 180) / 360 * Math.pow(2, zoom)); }
@@ -38,7 +44,7 @@ async function drawOsmTiles(
   mapX: number, mapY: number, mapW: number, mapH: number,
   minLng: number, maxLng: number, minLat: number, maxLat: number
 ) {
-  const zoom = 12;
+  const zoom = data.mapView?.zoom ?? 15;
   const tileXmin = lon2tile(minLng, zoom);
   const tileXmax = lon2tile(maxLng, zoom);
   const tileYmin = lat2tile(maxLat, zoom); // note: y is inverted
@@ -116,16 +122,21 @@ export async function generateDrawingPdf(data: DrawingData) {
 
   if (allCoords.length === 0) return;
 
-  const lngs = allCoords.map((c) => c[0]);
-  const lats = allCoords.map((c) => c[1]);
-  let minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
-  let minLat = Math.min(...lats), maxLat = Math.max(...lats);
+  let minLng: number, maxLng: number, minLat: number, maxLat: number;
 
-  // Pad bounding box 120% for more surrounding context
-  const padLng = (maxLng - minLng) * 1.2 || 0.005;
-  const padLat = (maxLat - minLat) * 1.2 || 0.005;
-  minLng -= padLng; maxLng += padLng;
-  minLat -= padLat; maxLat += padLat;
+  if (data.mapView) {
+    // Use exact map bounds from the user's view
+    ({ minLng, maxLng, minLat, maxLat } = data.mapView.bounds);
+  } else {
+    const lngs = allCoords.map((c) => c[0]);
+    const lats = allCoords.map((c) => c[1]);
+    minLng = Math.min(...lngs); maxLng = Math.max(...lngs);
+    minLat = Math.min(...lats); maxLat = Math.max(...lats);
+    const padLng = (maxLng - minLng) * 1.2 || 0.005;
+    const padLat = (maxLat - minLat) * 1.2 || 0.005;
+    minLng -= padLng; maxLng += padLng;
+    minLat -= padLat; maxLat += padLat;
+  }
 
   function project(lng: number, lat: number): [number, number] {
     const x = mapX + ((lng - minLng) / (maxLng - minLng)) * mapW;
