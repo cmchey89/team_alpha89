@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
 import type { LatLngTuple } from 'leaflet';
 import Navbar from '@/components/Navbar';
+import { generateDrawingPdf } from '@/lib/pdf/generateDrawingPdf';
 
 // react-leaflet's MapContainer touches `window` at import time, which
 // breaks Next.js's server-side render pass. Dynamic-importing with
@@ -195,14 +196,22 @@ export default function ContractorDrawPage() {
 
         {phase === 'affected_paid' && releaseData && (
           <div className="result-affected">
-            <h2>AFFECTED — Lines Released</h2>
+            <h2>AFFECTED</h2>
             <p>Reference: {result?.reference}</p>
-            <p>{releaseData.conflicts?.length ?? 0} conflicting line(s) found:</p>
+            <p>{releaseData.conflicts?.length ?? 0} conflicting utility line(s) detected.</p>
             <ul style={{ paddingLeft: 16, fontSize: 13 }}>
               {releaseData.conflicts?.map((c: any, i: number) => (
                 <li key={i}>{c.utilityType}{c.label ? ` — ${c.label}` : ''}</li>
               ))}
             </ul>
+            <button onClick={() => generateDrawingPdf({
+              reference: result!.reference,
+              conflicts: releaseData.conflicts,
+              zoneGeoJSON: releaseData.zoneGeoJSON,
+              contractorEmail: 'cmchey89@gmail.com',
+            })}>
+              Download Drawing (PDF)
+            </button>
             <button onClick={resetAll}>Start new zone</button>
           </div>
         )}

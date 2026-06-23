@@ -1,19 +1,11 @@
-// app/api/zones/[id]/release/route.ts
-//
-// Returns the actual conflicting infra line geometry and details for a work
-// zone — but ONLY if that zone's status is 'affected_paid' in the database.
-// This check happens server-side against the DB record (set by the webhook
-// handler), never against anything the client claims — a contractor cannot
-// unlock this by sending `paid: true` in the request, only FOMO Pay's
-// verified webhook can flip that flag.
-
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
+import { neon } from '@neondatabase/serverless';
 import { db } from '@/lib/db/client';
-import { workZones, workZoneConflicts, infraLines } from '@/lib/db/schema';
+import { workZones } from '@/lib/db/schema';
 import { requireUser } from '@/lib/auth/session';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -30,7 +22,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 
   if (zone.status === 'clear') {
-    return NextResponse.json({ cleared: true, conflicts: [] });
+    return NextResponse.json({ cleared: true, conflicts: [], zoneGeoJSON: null });
   }
 
   if (zone.status !== 'affected_paid') {
@@ -44,20 +36,29 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     }
   }
 
-  const conflictRows = await db
-    .select({
-      infraLineId: infraLines.id,
-      utilityType: infraLines.utilityType,
-      label: infraLines.label,
-      geom: infraLines.geom,
-    })
-    .from(workZoneConflicts)
-    .innerJoin(infraLines, eq(workZoneConflicts.infraLineId, infraLines.id))
-    .where(eq(workZoneConflicts.workZoneId, zone.id));
+  const sql = neon(process.env.DATABASE_URL!);
+
+  // Return conflict lines as GeoJSON
+  const conflictRows = await sql`
+    SELECT
+      il.id AS "infraLineId",
+      il.utility_type AS "utilityType",
+      il.label,
+      ST_AsGeoJSON(il.geom)::json AS geometry
+    FROM work_zone_conflicts wzc
+    JOIN infra_lines il ON wzc.infra_line_id = il.id
+    WHERE wzc.work_zone_id = ${zone.id}
+  `;
+
+  // Return work zone polygon as GeoJSON
+  const zoneRows2 = await sql`
+    SELECT ST_AsGeoJSON(geom)::json AS geometry FROM work_zones WHERE id = ${zone.id}
+  `;
 
   return NextResponse.json({
     cleared: false,
     reference: zone.reference,
     conflicts: conflictRows,
+    zoneGeoJSON: zoneRows2[0]?.geometry ?? null,
   });
 }
