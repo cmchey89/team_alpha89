@@ -1,5 +1,6 @@
 // app/api/auth/signup/route.ts
-export const runtime = 'nodejs'; // needs crypto.scrypt, not available on Edge runtime
+export const runtime = 'nodejs';
+export const maxDuration = 60; // needs crypto.scrypt, not available on Edge runtime
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

@@ -8,6 +8,7 @@
 // verified webhook can flip that flag.
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';

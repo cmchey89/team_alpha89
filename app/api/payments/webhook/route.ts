@@ -15,6 +15,7 @@
 //   3. Only mark paid if status indicates success — never assume.
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from 'next/server';
 import { eq } from 'drizzle-orm';
