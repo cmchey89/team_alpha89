@@ -28,6 +28,56 @@ interface DrawingData {
   contractorEmail: string;
 }
 
+function lon2tile(lon: number, zoom: number) { return Math.floor((lon + 180) / 360 * Math.pow(2, zoom)); }
+function lat2tile(lat: number, zoom: number) { return Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, zoom)); }
+function tile2lon(x: number, zoom: number) { return x / Math.pow(2, zoom) * 360 - 180; }
+function tile2lat(y: number, zoom: number) { const n = Math.PI - 2 * Math.PI * y / Math.pow(2, zoom); return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n))); }
+
+async function drawOsmTiles(
+  doc: jsPDF,
+  mapX: number, mapY: number, mapW: number, mapH: number,
+  minLng: number, maxLng: number, minLat: number, maxLat: number
+) {
+  const zoom = 16;
+  const tileXmin = lon2tile(minLng, zoom);
+  const tileXmax = lon2tile(maxLng, zoom);
+  const tileYmin = lat2tile(maxLat, zoom); // note: y is inverted
+  const tileYmax = lat2tile(minLat, zoom);
+
+  const lngSpan = maxLng - minLng;
+  const latSpan = maxLat - minLat;
+
+  for (let tx = tileXmin; tx <= tileXmax; tx++) {
+    for (let ty = tileYmin; ty <= tileYmax; ty++) {
+      try {
+        const url = `https://tile.openstreetmap.org/${zoom}/${tx}/${ty}.png`;
+        const resp = await fetch(url);
+        if (!resp.ok) continue;
+        const blob = await resp.blob();
+        const dataUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+
+        const tileLngMin = tile2lon(tx, zoom);
+        const tileLngMax = tile2lon(tx + 1, zoom);
+        const tileLatMax = tile2lat(ty, zoom);
+        const tileLatMin = tile2lat(ty + 1, zoom);
+
+        const x = mapX + ((tileLngMin - minLng) / lngSpan) * mapW;
+        const y = mapY + ((maxLat - tileLatMax) / latSpan) * mapH;
+        const w = ((tileLngMax - tileLngMin) / lngSpan) * mapW;
+        const h = ((tileLatMax - tileLatMin) / latSpan) * mapH;
+
+        doc.addImage(dataUrl, 'PNG', x, y, w, h);
+      } catch {
+        // skip failed tiles
+      }
+    }
+  }
+}
+
 function hexToRgb(hex: string): [number, number, number] {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
@@ -46,7 +96,7 @@ function collectPolygonCoords(geojson: { type: string; coordinates: any }): numb
   return [];
 }
 
-export function generateDrawingPdf(data: DrawingData) {
+export async function generateDrawingPdf(data: DrawingData) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
 
   const pageW = doc.internal.pageSize.getWidth();
@@ -83,22 +133,11 @@ export function generateDrawingPdf(data: DrawingData) {
     return [x, y];
   }
 
-  // --- Map background ---
-  doc.setFillColor(240, 244, 240);
-  doc.rect(mapX, mapY, mapW, mapH, 'F');
-  doc.setDrawColor(180, 180, 180);
+  // --- Map background using OSM tiles ---
+  await drawOsmTiles(doc, mapX, mapY, mapW, mapH, minLng, maxLng, minLat, maxLat);
+  doc.setDrawColor(100, 100, 100);
   doc.setLineWidth(0.3);
   doc.rect(mapX, mapY, mapW, mapH, 'S');
-
-  // Grid lines
-  doc.setDrawColor(210, 215, 210);
-  doc.setLineWidth(0.1);
-  for (let i = 1; i < 6; i++) {
-    const gx = mapX + (mapW / 6) * i;
-    const gy = mapY + (mapH / 6) * i;
-    doc.line(gx, mapY, gx, mapY + mapH);
-    doc.line(mapX, gy, mapX + mapW, gy);
-  }
 
   // --- Draw work zone polygon ---
   if (data.zoneGeoJSON) {

@@ -197,14 +197,8 @@ export default function ContractorDrawPage() {
         {phase === 'affected_paid' && releaseData && (
           <div className="result-affected">
             <h2>AFFECTED</h2>
-            <p>Reference: {result?.reference}</p>
-            <p>{releaseData.conflicts?.length ?? 0} conflicting utility line(s) detected.</p>
-            <ul style={{ paddingLeft: 16, fontSize: 13 }}>
-              {releaseData.conflicts?.map((c: any, i: number) => (
-                <li key={i}>{c.utilityType}{c.label ? ` — ${c.label}` : ''}</li>
-              ))}
-            </ul>
-            <button onClick={() => generateDrawingPdf({
+            <p style={{ fontSize: 13, color: 'var(--grey)' }}>Ref: {result?.reference}</p>
+            <button onClick={() => void generateDrawingPdf({
               reference: result!.reference,
               conflicts: releaseData.conflicts,
               zoneGeoJSON: releaseData.zoneGeoJSON,
