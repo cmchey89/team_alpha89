@@ -42,9 +42,9 @@ function tile2lat(y: number, zoom: number) { const n = Math.PI - 2 * Math.PI * y
 async function drawOsmTiles(
   doc: jsPDF,
   mapX: number, mapY: number, mapW: number, mapH: number,
-  minLng: number, maxLng: number, minLat: number, maxLat: number
+  minLng: number, maxLng: number, minLat: number, maxLat: number,
+  zoom: number
 ) {
-  const zoom = data.mapView?.zoom ?? 15;
   const tileXmin = lon2tile(minLng, zoom);
   const tileXmax = lon2tile(maxLng, zoom);
   const tileYmin = lat2tile(maxLat, zoom); // note: y is inverted
@@ -153,7 +153,8 @@ export async function generateDrawingPdf(data: DrawingData) {
   doc.rect(mapX, mapY, mapW, mapH, 'F');
 
   // --- Map background using OSM tiles ---
-  await drawOsmTiles(doc, mapX, mapY, mapW, mapH, minLng, maxLng, minLat, maxLat);
+  const tileZoom = data.mapView?.zoom ?? 15;
+  await drawOsmTiles(doc, mapX, mapY, mapW, mapH, minLng, maxLng, minLat, maxLat, tileZoom);
   // Mask any tile overflow outside the map rect with white
   doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, mapX, pageH, 'F');                          // left
