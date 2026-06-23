@@ -54,26 +54,26 @@ export async function findConflicts(
  * Inserts a single infra line (one feature from the owner's uploaded GIS
  * file, or one hand-drawn line in Owner Setup mode).
  */
-export async function insertInfraLine(params: {
+export async function insertInfraLines(rows: {
   ownerId: string;
   sourceUploadId?: string;
   utilityType: 'electrical' | 'water' | 'gas' | 'telecom' | 'other';
   label?: string;
   sourceProperties?: Record<string, unknown>;
   geometry: LineString;
-}) {
-  const geomJson = JSON.stringify(params.geometry);
-  await db.execute(sql`
-    INSERT INTO infra_lines (owner_id, source_upload_id, utility_type, label, source_properties, geom)
-    VALUES (
-      ${params.ownerId},
-      ${params.sourceUploadId ?? null},
-      ${params.utilityType},
-      ${params.label ?? null},
-      ${params.sourceProperties ? JSON.stringify(params.sourceProperties) : null}::jsonb,
-      ST_SetSRID(ST_GeomFromGeoJSON(${geomJson}), 4326)
-    )
-  `);
+}[]) {
+  if (rows.length === 0) return;
+  const CHUNK = 500;
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const chunk = rows.slice(i, i + CHUNK);
+    const values = chunk.map((p) =>
+      sql`(${p.ownerId}, ${p.sourceUploadId ?? null}, ${p.utilityType}, ${p.label ?? null}, ${p.sourceProperties ? JSON.stringify(p.sourceProperties) : null}::jsonb, ST_SetSRID(ST_GeomFromGeoJSON(${JSON.stringify(p.geometry)}), 4326))`
+    );
+    await db.execute(sql`
+      INSERT INTO infra_lines (owner_id, source_upload_id, utility_type, label, source_properties, geom)
+      VALUES ${sql.join(values, sql`, `)}
+    `);
+  }
 }
 
 /**

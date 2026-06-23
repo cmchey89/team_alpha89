@@ -11,7 +11,7 @@ import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { gisUploads } from '@/lib/db/schema';
-import { insertInfraLine } from '@/lib/db/spatial';
+import { insertInfraLines } from '@/lib/db/spatial';
 import { requireUser } from '@/lib/auth/session';
 
 const FeatureInput = z.object({
@@ -57,19 +57,14 @@ export async function POST(req: NextRequest) {
   });
 
   try {
-    // MultiLineString features are split into individual LineStrings before
-    // insert, since infra_lines models one geometry per row and ST_Intersects
-    // works the same either way — splitting just keeps each row's geometry
-    // simple and keeps the conflict list (which line, specifically) granular.
-    let inserted = 0;
+    const rows: Parameters<typeof insertInfraLines>[0] = [];
     for (const f of features) {
       const lineStrings: number[][][] =
         f.geometry.type === 'MultiLineString'
           ? (f.geometry.coordinates as number[][][])
           : [f.geometry.coordinates as number[][]];
-
       for (const coords of lineStrings) {
-        await insertInfraLine({
+        rows.push({
           ownerId: user.id,
           sourceUploadId: uploadId,
           utilityType: f.utilityType,
@@ -77,9 +72,10 @@ export async function POST(req: NextRequest) {
           sourceProperties: (f.sourceProperties as Record<string, unknown>) ?? undefined,
           geometry: { type: 'LineString', coordinates: coords },
         });
-        inserted++;
       }
     }
+    await insertInfraLines(rows);
+    const inserted = rows.length;
 
     await db
       .update(gisUploads)
