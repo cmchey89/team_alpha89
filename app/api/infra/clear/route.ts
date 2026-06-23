@@ -12,10 +12,8 @@ export async function DELETE(req: NextRequest) {
   }
 
   const sql = neon(process.env.DATABASE_URL!);
-  const result = await sql`
-    DELETE FROM infra_lines WHERE owner_id = ${user.id}
-  `;
+  await sql`DELETE FROM infra_lines WHERE owner_id = ${user.id}`;
   await sql`DELETE FROM gis_uploads WHERE owner_id = ${user.id}`;
 
-  return NextResponse.json({ deleted: result.count });
+  return NextResponse.json({ deleted: true });
 }
