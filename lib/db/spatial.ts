@@ -54,6 +54,10 @@ export async function findConflicts(
  * Inserts a single infra line (one feature from the owner's uploaded GIS
  * file, or one hand-drawn line in Owner Setup mode).
  */
+function strip2D(coords: number[][]): number[][] {
+  return coords.map(([x, y]) => [x, y]);
+}
+
 export async function insertInfraLine(params: {
   ownerId: string;
   sourceUploadId?: string;
@@ -62,7 +66,11 @@ export async function insertInfraLine(params: {
   sourceProperties?: Record<string, unknown>;
   geometry: LineString;
 }) {
-  const geomJson = JSON.stringify(params.geometry);
+  const geom2D: LineString = {
+    type: 'LineString',
+    coordinates: strip2D(params.geometry.coordinates as number[][]),
+  };
+  const geomJson = JSON.stringify(geom2D);
   await db.execute(sql`
     INSERT INTO infra_lines (owner_id, source_upload_id, utility_type, label, source_properties, geom)
     VALUES (
