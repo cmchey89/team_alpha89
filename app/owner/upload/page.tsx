@@ -225,6 +225,23 @@ export default function OwnerUploadPage() {
             </div>
           )}
 
+          {lines.length > 0 && (
+            <button
+              onClick={async () => {
+                if (!confirm(`Delete all ${lines.length} infrastructure lines? This cannot be undone.`)) return;
+                await fetch('/api/infra/clear', { method: 'DELETE' });
+                setLines([]);
+              }}
+              style={{
+                marginTop: 20, width: '100%', padding: '10px',
+                background: 'none', border: '1px solid var(--red)',
+                color: 'var(--red)', borderRadius: 4, cursor: 'pointer', fontSize: 13,
+              }}
+            >
+              Clear all infrastructure lines
+            </button>
+          )}
+
           {loadingMap && (
             <p style={{ fontSize: 12, color: 'var(--grey)', marginTop: 16 }}>Loading map data…</p>
           )}
