@@ -38,7 +38,7 @@ async function drawOsmTiles(
   mapX: number, mapY: number, mapW: number, mapH: number,
   minLng: number, maxLng: number, minLat: number, maxLat: number
 ) {
-  const zoom = 15;
+  const zoom = 14;
   const tileXmin = lon2tile(minLng, zoom);
   const tileXmax = lon2tile(maxLng, zoom);
   const tileYmin = lat2tile(maxLat, zoom); // note: y is inverted
@@ -121,9 +121,9 @@ export async function generateDrawingPdf(data: DrawingData) {
   let minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
   let minLat = Math.min(...lats), maxLat = Math.max(...lats);
 
-  // Pad bounding box 60% for more context around the zone
-  const padLng = (maxLng - minLng) * 0.6 || 0.003;
-  const padLat = (maxLat - minLat) * 0.6 || 0.003;
+  // Pad bounding box 120% for more surrounding context
+  const padLng = (maxLng - minLng) * 1.2 || 0.005;
+  const padLat = (maxLat - minLat) * 1.2 || 0.005;
   minLng -= padLng; maxLng += padLng;
   minLat -= padLat; maxLat += padLat;
 
@@ -143,8 +143,16 @@ export async function generateDrawingPdf(data: DrawingData) {
 
   // --- Map background using OSM tiles ---
   await drawOsmTiles(doc, mapX, mapY, mapW, mapH, minLng, maxLng, minLat, maxLat);
-  doc.setDrawColor(100, 100, 100);
-  doc.setLineWidth(0.3);
+  // Mask any tile overflow outside the map rect with white
+  doc.setFillColor(255, 255, 255);
+  doc.rect(0, 0, mapX, pageH, 'F');                          // left
+  doc.rect(mapX + mapW, 0, pageW - mapX - mapW, pageH, 'F'); // right
+  doc.rect(0, 0, pageW, mapY, 'F');                          // top
+  doc.rect(0, mapY + mapH, pageW, pageH - mapY - mapH, 'F'); // bottom
+
+  // Map border
+  doc.setDrawColor(80, 80, 80);
+  doc.setLineWidth(0.5);
   doc.rect(mapX, mapY, mapW, mapH, 'S');
 
   // --- Draw work zone polygon ---

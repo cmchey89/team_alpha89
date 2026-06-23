@@ -53,6 +53,7 @@ export default function ContractorDrawPage() {
   const [points, setPoints] = useState<LatLngTuple[]>([]);
   const [result, setResult] = useState<CheckResult | null>(null);
   const [releaseData, setReleaseData] = useState<any>(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handlePointAdded = useCallback((p: LatLngTuple) => {
@@ -198,13 +199,23 @@ export default function ContractorDrawPage() {
           <div className="result-affected">
             <h2>AFFECTED</h2>
             <p style={{ fontSize: 13, color: 'var(--grey)' }}>Ref: {result?.reference}</p>
-            <button onClick={() => void generateDrawingPdf({
-              reference: result!.reference,
-              conflicts: releaseData.conflicts,
-              zoneGeoJSON: releaseData.zoneGeoJSON,
-              contractorEmail: 'cmchey89@gmail.com',
-            })}>
-              Download Drawing (PDF)
+            <button
+              disabled={generatingPdf}
+              onClick={async () => {
+                setGeneratingPdf(true);
+                try {
+                  await generateDrawingPdf({
+                    reference: result!.reference,
+                    conflicts: releaseData.conflicts,
+                    zoneGeoJSON: releaseData.zoneGeoJSON,
+                    contractorEmail: 'cmchey89@gmail.com',
+                  });
+                } finally {
+                  setGeneratingPdf(false);
+                }
+              }}
+            >
+              {generatingPdf ? 'Generating PDF…' : 'Download Drawing (PDF)'}
             </button>
             <button onClick={resetAll}>Start new zone</button>
           </div>
