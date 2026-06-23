@@ -144,19 +144,21 @@ export async function generateDrawingPdf(data: DrawingData) {
     const coords = collectPolygonCoords(data.zoneGeoJSON);
     if (coords.length >= 3) {
       const pts = coords.map(([lng, lat]) => project(lng, lat));
-      doc.setFillColor(95, 190, 142, 0.15 as any);
       doc.setDrawColor(95, 190, 142);
-      doc.setLineWidth(0.8);
-      doc.lines(
-        pts.slice(1).map(([x2, y2], i) => [x2 - pts[i][0], y2 - pts[i][1]] as [number, number]),
-        pts[0][0], pts[0][1], [1, 1], 'FD', true
-      );
+      doc.setLineWidth(1.2);
+      // Draw as dashed outline only — no fill to avoid black artifact
+      for (let i = 0; i < pts.length - 1; i++) {
+        doc.line(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
+      }
+      doc.line(pts[pts.length - 1][0], pts[pts.length - 1][1], pts[0][0], pts[0][1]);
       // Label
       const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
       const cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
       doc.setFontSize(7);
-      doc.setTextColor(40, 120, 80);
+      doc.setTextColor(40, 160, 100);
+      doc.setFont('helvetica', 'bold');
       doc.text('WORK ZONE', cx, cy, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
     }
   }
 
