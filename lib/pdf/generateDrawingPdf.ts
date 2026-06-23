@@ -38,7 +38,7 @@ async function drawOsmTiles(
   mapX: number, mapY: number, mapW: number, mapH: number,
   minLng: number, maxLng: number, minLat: number, maxLat: number
 ) {
-  const zoom = 16;
+  const zoom = 15;
   const tileXmin = lon2tile(minLng, zoom);
   const tileXmax = lon2tile(maxLng, zoom);
   const tileYmin = lat2tile(maxLat, zoom); // note: y is inverted
@@ -121,9 +121,9 @@ export async function generateDrawingPdf(data: DrawingData) {
   let minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
   let minLat = Math.min(...lats), maxLat = Math.max(...lats);
 
-  // Pad bounding box 20%
-  const padLng = (maxLng - minLng) * 0.2 || 0.001;
-  const padLat = (maxLat - minLat) * 0.2 || 0.001;
+  // Pad bounding box 60% for more context around the zone
+  const padLng = (maxLng - minLng) * 0.6 || 0.003;
+  const padLat = (maxLat - minLat) * 0.6 || 0.003;
   minLng -= padLng; maxLng += padLng;
   minLat -= padLat; maxLat += padLat;
 
