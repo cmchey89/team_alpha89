@@ -31,7 +31,7 @@ interface CheckResult {
 // dropdown populated from a public "which owners publish a baseline here"
 // endpoint). Replace with real owner selection before going beyond a single
 // owner pilot.
-const OWNER_ID = process.env.NEXT_PUBLIC_DEFAULT_OWNER_ID || '';
+const OWNER_ID = 'afc4cd7e-153c-47d3-a428-356058108f04';
 
 function shoelaceAreaSqm(points: LatLngTuple[]): number {
   if (points.length < 3) return 0;
