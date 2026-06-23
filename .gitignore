@@ -1,0 +1,29 @@
+# dependencies
+/node_modules
+
+# next.js build output
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# env files - never commit real secrets
+.env
+.env.local
+.env.*.local
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# self-hosted gdal wasm assets (large binaries) - only present if you ran
+# `npm run gdal:vendor`; default setup loads these from a CDN instead.
+/public/gdal3wasm/

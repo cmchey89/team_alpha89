@@ -1,0 +1,206 @@
+/* app/globals.css */
+/* Visual language ported from the artifact prototype: a drafting-table /
+   permit-to-dig aesthetic rather than a generic SaaS dashboard look. */
+
+:root {
+  --bg: #0e1a14;
+  --paper: #f2efe6;
+  --panel: #16241c;
+  --panel-raised: #1c2b22;
+  --orange: #ff6a1a;
+  --green: #3a7d5c;
+  --green-bright: #5fbe8e;
+  --affected-blue: #10246b;
+  --grey: #8a938c;
+  --line: #2a3b30;
+  --red: #d9534f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--paper);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.contractor-draw-page {
+  display: flex;
+  height: 100vh;
+}
+
+.map-area {
+  flex: 1;
+  position: relative;
+}
+
+.map-toolbar {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 500;
+  display: flex;
+  gap: 8px;
+}
+
+.map-toolbar button {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--paper);
+  padding: 8px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.map-toolbar button:hover {
+  background: var(--panel-raised);
+}
+
+.ticket-panel {
+  width: 380px;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.ticket-panel button {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 4px;
+  border: none;
+  background: var(--orange);
+  color: #1a0d04;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ticket-panel button:hover {
+  opacity: 0.88;
+}
+
+.result-clear h2 {
+  color: var(--green-bright);
+  border: 3px solid var(--green-bright);
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 6px;
+}
+
+.result-affected h2 {
+  color: var(--affected-blue);
+  border: 4px solid var(--affected-blue);
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 6px;
+  background: rgba(16, 36, 107, 0.08);
+}
+
+.error-box {
+  background: rgba(217, 83, 79, 0.12);
+  border: 1px solid var(--red);
+  color: #f3b9b6;
+  padding: 10px 14px;
+  border-radius: 4px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+
+.success-box {
+  background: rgba(95, 190, 142, 0.1);
+  border: 1px solid var(--green);
+  color: var(--green-bright);
+  padding: 10px 14px;
+  border-radius: 4px;
+  margin-top: 14px;
+}
+
+.upload-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+.upload-page .hint {
+  color: var(--grey);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.dropzone {
+  display: block;
+  border: 2px dashed var(--line);
+  border-radius: 8px;
+  padding: 40px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--grey);
+  margin: 20px 0;
+}
+
+.dropzone input {
+  display: none;
+}
+
+.review-box {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.layer-row .layer-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.layer-row .layer-count {
+  color: var(--grey);
+  font-size: 12px;
+}
+
+.layer-row select {
+  background: var(--bg);
+  color: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+
+.review-box button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 16px;
+  border-radius: 4px;
+  border: none;
+  background: var(--orange);
+  color: #1a0d04;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.zone-detail {
+  max-width: 600px;
+  margin: 60px auto;
+  padding: 0 24px;
+}
+
+.zone-detail code {
+  background: var(--panel-raised);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
