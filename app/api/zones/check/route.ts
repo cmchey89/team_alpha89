@@ -18,10 +18,10 @@ import { findConflicts, insertWorkZone } from '@/lib/db/spatial';
 import { requireUser } from '@/lib/auth/session';
 
 const CheckBody = z.object({
-  ownerId: z.string().uuid(), // which owner's infra baseline to check against
+  ownerId: z.string().uuid(),
   geometry: z.object({
     type: z.literal('Polygon'),
-    coordinates: z.array(z.array(z.tuple([z.number(), z.number()]))),
+    coordinates: z.array(z.array(z.array(z.number()))),
   }),
   areaSqm: z.number().nonnegative(),
 });
