@@ -67,7 +67,7 @@ export async function insertInfraLines(rows: {
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
     const values = chunk.map((p) =>
-      sql`(${p.ownerId}, ${p.sourceUploadId ?? null}, ${p.utilityType}, ${p.label ?? null}, ${p.sourceProperties ? JSON.stringify(p.sourceProperties) : null}::jsonb, ST_SetSRID(ST_GeomFromGeoJSON(${JSON.stringify(p.geometry)}), 4326))`
+      sql`(${p.ownerId}, ${p.sourceUploadId ?? null}, ${p.utilityType}, ${p.label ?? null}, ${p.sourceProperties ? JSON.stringify(p.sourceProperties) : null}::jsonb, ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON(${JSON.stringify(p.geometry)}), 3414), 4326))`
     );
     await db.execute(sql`
       INSERT INTO infra_lines (owner_id, source_upload_id, utility_type, label, source_properties, geom)
