@@ -79,7 +79,7 @@ export default function OwnerUploadPage() {
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Upload failed (${res.status})`);
+        throw new Error((body.error || `Upload failed (${res.status})`) + (body.details ? `: ${body.details}` : ''));
       }
 
       const body = await res.json();
