@@ -51,6 +51,7 @@ export default function ContractorDrawPage() {
   const [phase, setPhase] = useState<Phase>('idle');
   const [points, setPoints] = useState<LatLngTuple[]>([]);
   const [result, setResult] = useState<CheckResult | null>(null);
+  const [releaseData, setReleaseData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handlePointAdded = useCallback((p: LatLngTuple) => {
@@ -104,17 +105,14 @@ export default function ContractorDrawPage() {
     if (!result) return;
     setError(null);
     try {
-      const res = await fetch('/api/payments/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zoneId: result.zoneId }),
-      });
+      const res = await fetch(`/api/zones/${result.zoneId}/release`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Payment setup failed (${res.status})`);
+        throw new Error(body.error || `Failed (${res.status})`);
       }
-      const { checkoutUrl } = await res.json();
-      window.location.href = checkoutUrl; // hand off to FOMO Pay's hosted checkout
+      const data = await res.json();
+      setReleaseData(data);
+      setPhase('affected_paid');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -123,6 +121,7 @@ export default function ContractorDrawPage() {
   function resetAll() {
     setPoints([]);
     setResult(null);
+    setReleaseData(null);
     setError(null);
     setPhase('idle');
   }
@@ -187,11 +186,24 @@ export default function ContractorDrawPage() {
             <p>Reference: {result.reference}</p>
             <p>
               This zone overlaps {result.conflictCount} underground utility line
-              {result.conflictCount > 1 ? 's' : ''} on record. Pay the drawing fee to see exactly where,
-              and to download the drawing.
+              {result.conflictCount > 1 ? 's' : ''} on record.
             </p>
-            <button onClick={payWithFomoPay}>Pay with FOMO Pay (SGD 45.00)</button>
+            <button onClick={payWithFomoPay}>View affected lines (test mode)</button>
             <button onClick={startDrawing}>Redraw zone</button>
+          </div>
+        )}
+
+        {phase === 'affected_paid' && releaseData && (
+          <div className="result-affected">
+            <h2>AFFECTED — Lines Released</h2>
+            <p>Reference: {result?.reference}</p>
+            <p>{releaseData.conflicts?.length ?? 0} conflicting line(s) found:</p>
+            <ul style={{ paddingLeft: 16, fontSize: 13 }}>
+              {releaseData.conflicts?.map((c: any, i: number) => (
+                <li key={i}>{c.utilityType}{c.label ? ` — ${c.label}` : ''}</li>
+              ))}
+            </ul>
+            <button onClick={resetAll}>Start new zone</button>
           </div>
         )}
       </aside>
