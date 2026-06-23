@@ -81,6 +81,10 @@ export async function parseGisFile(file: File): Promise<ParsedGisResult> {
     return parseSingleFile(Gdal, file, 'ESRI Shapefile');
   }
 
+  if (lowerName.endsWith('.geojson') || lowerName.endsWith('.json')) {
+    return parseGeoJsonFile(file);
+  }
+
   if (lowerName.endsWith('.shp')) {
     throw new UnsupportedGisFileError(
       'A standalone .shp file is missing its companion files (.shx, .dbf, .prj). Please zip the whole set of files together and upload the .zip instead.'
@@ -88,8 +92,32 @@ export async function parseGisFile(file: File): Promise<ParsedGisResult> {
   }
 
   throw new UnsupportedGisFileError(
-    `Unsupported file type: ${file.name}. Upload a GeoPackage (.gpkg) or a zipped shapefile (.zip).`
+    `Unsupported file type: ${file.name}. Upload a GeoJSON (.geojson), GeoPackage (.gpkg), or a zipped shapefile (.zip).`
   );
+}
+
+async function parseGeoJsonFile(file: File): Promise<ParsedGisResult> {
+  const text = await file.text();
+  let parsed: any;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error('Could not parse file as JSON. Make sure it is a valid GeoJSON file.');
+  }
+
+  let geojson: FeatureCollection;
+  if (parsed.type === 'FeatureCollection') {
+    geojson = parsed;
+  } else if (parsed.type === 'Feature') {
+    geojson = { type: 'FeatureCollection', features: [parsed] };
+  } else {
+    throw new UnsupportedGisFileError('GeoJSON file must be a FeatureCollection or Feature.');
+  }
+
+  return {
+    sourceFormat: 'GeoJSON',
+    layers: [{ name: file.name.replace(/\.(geojson|json)$/i, ''), geojson }],
+  };
 }
 
 async function parseSingleFile(

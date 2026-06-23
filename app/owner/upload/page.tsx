@@ -108,7 +108,7 @@ export default function OwnerUploadPage() {
       <label className="dropzone">
         <input
           type="file"
-          accept=".gpkg,.zip,.shp,.qgz,.qgs"
+          accept=".gpkg,.zip,.shp,.qgz,.qgs,.geojson,.json"
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
             const file = e.target.files?.[0];
             if (file) handleFile(file);
