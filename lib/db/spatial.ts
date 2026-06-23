@@ -6,9 +6,14 @@
 // battle-tested way to do this and handles edge cases (curved boundaries,
 // antimeridian, precision) that the JS version did not attempt to.
 
-import { sql } from 'drizzle-orm';
+import { neon } from '@neondatabase/serverless';
 import { db } from './client';
 import type { Feature, Polygon, LineString } from 'geojson';
+
+function rawSql() {
+  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not set.');
+  return neon(process.env.DATABASE_URL);
+}
 
 export interface ConflictResult {
   infraLineId: string;
@@ -34,7 +39,7 @@ export async function findConflicts(
     'geometry' in zoneGeoJSON ? zoneGeoJSON.geometry : zoneGeoJSON
   );
 
-  const rows = await db.execute(sql`
+  const rows = await rawSql()`
     SELECT
       id AS "infraLineId",
       utility_type AS "utilityType",
@@ -45,7 +50,7 @@ export async function findConflicts(
         geom,
         ST_SetSRID(ST_GeomFromGeoJSON(${geomJson}), 4326)
       )
-  `);
+  `;
 
   return rows as unknown as ConflictResult[];
 }
@@ -66,13 +71,11 @@ export async function insertInfraLines(rows: {
   const CHUNK = 500;
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
-    const values = chunk.map((p) =>
-      sql`(${p.ownerId}, ${p.sourceUploadId ?? null}, ${p.utilityType}, ${p.label ?? null}, ${p.sourceProperties ? JSON.stringify(p.sourceProperties) : null}::jsonb, ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON(${JSON.stringify(p.geometry)}), 3414), 4326))`
-    );
-    await db.execute(sql`
-      INSERT INTO infra_lines (owner_id, source_upload_id, utility_type, label, source_properties, geom)
-      VALUES ${sql.join(values, sql`, `)}
-    `);
+    const sqlClient = rawSql();
+    const valueClauses = chunk.map((p) =>
+      `('${p.ownerId}', ${p.sourceUploadId ? `'${p.sourceUploadId}'` : 'NULL'}, '${p.utilityType}', ${p.label ? `'${p.label.replace(/'/g, "''")}'` : 'NULL'}, ${p.sourceProperties ? `'${JSON.stringify(p.sourceProperties).replace(/'/g, "''")}'::jsonb` : 'NULL'}, ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON('${JSON.stringify(p.geometry)}'), 3414), 4326))`
+    ).join(', ');
+    await sqlClient`INSERT INTO infra_lines (owner_id, source_upload_id, utility_type, label, source_properties, geom) VALUES ${sqlClient.unsafe(valueClauses)}`;
   }
 }
 
@@ -87,7 +90,7 @@ export async function insertWorkZone(params: {
   areaSqm: number;
 }): Promise<string> {
   const geomJson = JSON.stringify(params.geometry);
-  const rows = await db.execute(sql`
+  const rows = await rawSql()`
     INSERT INTO work_zones (contractor_id, owner_id, reference, geom, area_sqm, status)
     VALUES (
       ${params.contractorId},
@@ -98,6 +101,6 @@ export async function insertWorkZone(params: {
       'checking'
     )
     RETURNING id
-  `);
+  `;
   return (rows[0] as { id: string }).id;
 }
