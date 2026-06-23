@@ -20,8 +20,10 @@ export async function POST(req: NextRequest) {
   const json = await req.json().catch(() => null);
   const parsed = SignupBody.safeParse(json);
   if (!parsed.success) {
+    const details = parsed.error.flatten();
+    console.error('Signup validation failed:', JSON.stringify({ received: json, details }));
     return NextResponse.json(
-      { error: 'Invalid signup data', details: parsed.error.flatten() },
+      { error: 'Invalid signup data', details },
       { status: 400 }
     );
   }
