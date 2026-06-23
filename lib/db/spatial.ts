@@ -68,24 +68,31 @@ export async function insertInfraLines(rows: {
   geometry: LineString;
 }[]) {
   if (rows.length === 0) return;
-  const CHUNK = 500;
+  const { neonConfig, neon: neonFn } = await import('@neondatabase/serverless');
+  neonConfig.fetchConnectionCache = true;
+  const sqlClient = neonFn(process.env.DATABASE_URL!, { fullResults: false });
+
+  const CHUNK = 100;
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
-    const sqlClient = rawSql();
-    for (const p of chunk) {
-      const geomJson = JSON.stringify(p.geometry);
-      await sqlClient`
-        INSERT INTO infra_lines (owner_id, source_upload_id, utility_type, label, source_properties, geom)
-        VALUES (
-          ${p.ownerId},
-          ${p.sourceUploadId ?? null},
-          ${p.utilityType},
-          ${p.label ?? null},
-          ${p.sourceProperties ? JSON.stringify(p.sourceProperties) : null}::jsonb,
-          ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON(${geomJson}), 3414), 4326)
-        )
-      `;
-    }
+    // Build a single multi-row INSERT using unnest for true bulk insert
+    const ownerIds      = chunk.map((p) => p.ownerId);
+    const uploadIds     = chunk.map((p) => p.sourceUploadId ?? null);
+    const utilityTypes  = chunk.map((p) => p.utilityType);
+    const labels        = chunk.map((p) => p.label ?? null);
+    const props         = chunk.map((p) => p.sourceProperties ? JSON.stringify(p.sourceProperties) : null);
+    const geoms         = chunk.map((p) => JSON.stringify(p.geometry));
+
+    await sqlClient`
+      INSERT INTO infra_lines (owner_id, source_upload_id, utility_type, label, source_properties, geom)
+      SELECT
+        unnest(${ownerIds}::uuid[]),
+        unnest(${uploadIds}::uuid[]),
+        unnest(${utilityTypes}::text[]),
+        unnest(${labels}::text[]),
+        unnest(${props}::jsonb[]),
+        ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON(unnest(${geoms}::text[])), 3414), 4326)
+    `;
   }
 }
 
