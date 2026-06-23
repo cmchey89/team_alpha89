@@ -133,6 +133,10 @@ export async function generateDrawingPdf(data: DrawingData) {
     return [x, y];
   }
 
+  // --- White page background ---
+  doc.setFillColor(255, 255, 255);
+  doc.rect(0, 0, pageW, pageH, 'F');
+
   // --- Map background using OSM tiles ---
   await drawOsmTiles(doc, mapX, mapY, mapW, mapH, minLng, maxLng, minLat, maxLat);
   doc.setDrawColor(100, 100, 100);
