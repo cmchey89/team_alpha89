@@ -82,8 +82,12 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            minLength={mode === 'signup' ? 8 : undefined}
             style={{ display: 'block', width: '100%', padding: 10, marginTop: 6 }}
           />
+          {mode === 'signup' && (
+            <small style={{ color: '#666' }}>Minimum 8 characters</small>
+          )}
         </div>
 
         {mode === 'signup' && (
