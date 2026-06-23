@@ -40,75 +40,128 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="zone-detail">
-      <h1>DigClear</h1>
+    <main style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'var(--bg)',
+      padding: '24px',
+    }}>
+      <div style={{
+        width: '100%',
+        maxWidth: '420px',
+        background: 'var(--panel)',
+        border: '1px solid var(--line)',
+        borderRadius: '12px',
+        padding: '40px 36px',
+      }}>
+        <h1 style={{ margin: '0 0 8px', fontSize: '22px', color: 'var(--paper)', fontWeight: 700 }}>
+          DigClear
+        </h1>
+        <p style={{ margin: '0 0 28px', color: 'var(--grey)', fontSize: '14px' }}>
+          Underground utility clearance system
+        </p>
 
-      <div style={{ display: 'flex', marginBottom: 24, borderBottom: '1px solid #ccc' }}>
-        {(['login', 'signup'] as const).map((m) => (
+        {/* Tabs */}
+        <div style={{ display: 'flex', marginBottom: '28px', borderBottom: '1px solid var(--line)' }}>
+          {(['login', 'signup'] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => { setMode(m); setError(null); }}
+              style={{
+                flex: 1,
+                padding: '10px 0',
+                background: 'none',
+                border: 'none',
+                borderBottom: mode === m ? '2px solid var(--orange)' : '2px solid transparent',
+                color: mode === m ? 'var(--paper)' : 'var(--grey)',
+                fontWeight: mode === m ? 700 : 400,
+                cursor: 'pointer',
+                fontSize: '14px',
+                transition: 'color 0.15s',
+              }}
+            >
+              {m === 'login' ? 'Sign in' : 'Sign up'}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--paper)', marginBottom: '6px' }}>
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="you@example.com"
+              style={{
+                display: 'block', width: '100%', padding: '10px 12px',
+                background: 'var(--bg)', border: '1px solid var(--line)',
+                borderRadius: '6px', color: 'var(--paper)', fontSize: '14px',
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--paper)', marginBottom: '6px' }}>
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={mode === 'signup' ? 8 : undefined}
+              placeholder={mode === 'signup' ? 'Minimum 8 characters' : '••••••••'}
+              style={{
+                display: 'block', width: '100%', padding: '10px 12px',
+                background: 'var(--bg)', border: '1px solid var(--line)',
+                borderRadius: '6px', color: 'var(--paper)', fontSize: '14px',
+              }}
+            />
+          </div>
+
+          {mode === 'signup' && (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--paper)', marginBottom: '6px' }}>
+                I am a…
+              </label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as 'owner' | 'contractor')}
+                style={{
+                  display: 'block', width: '100%', padding: '10px 12px',
+                  background: 'var(--bg)', border: '1px solid var(--line)',
+                  borderRadius: '6px', color: 'var(--paper)', fontSize: '14px',
+                }}
+              >
+                <option value="contractor">Contractor</option>
+                <option value="owner">Infrastructure Owner</option>
+              </select>
+            </div>
+          )}
+
+          {error && <div className="error-box">{error}</div>}
+
           <button
-            key={m}
-            onClick={() => { setMode(m); setError(null); }}
+            type="submit"
+            disabled={loading}
             style={{
-              flex: 1,
-              padding: '10px 0',
-              background: 'none',
-              border: 'none',
-              borderBottom: mode === m ? '2px solid #000' : '2px solid transparent',
-              fontWeight: mode === m ? 700 : 400,
-              cursor: 'pointer',
-              fontSize: 15,
+              width: '100%', padding: '12px',
+              background: 'var(--orange)', color: '#1a0d04',
+              border: 'none', borderRadius: '6px',
+              fontWeight: 700, fontSize: '14px', cursor: 'pointer',
+              marginTop: '8px', opacity: loading ? 0.7 : 1,
             }}
           >
-            {m === 'login' ? 'Sign in' : 'Sign up'}
+            {loading ? '…' : mode === 'login' ? 'Sign in' : 'Create account'}
           </button>
-        ))}
+        </form>
       </div>
-
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 14 }}>
-          <label>Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ display: 'block', width: '100%', padding: 10, marginTop: 6 }}
-          />
-        </div>
-        <div style={{ marginBottom: 14 }}>
-          <label>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={mode === 'signup' ? 8 : undefined}
-            style={{ display: 'block', width: '100%', padding: 10, marginTop: 6 }}
-          />
-          {mode === 'signup' && (
-            <small style={{ color: '#666' }}>Minimum 8 characters</small>
-          )}
-        </div>
-
-        {mode === 'signup' && (
-          <div style={{ marginBottom: 14 }}>
-            <label>I am a…</label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as 'owner' | 'contractor')}
-              style={{ display: 'block', width: '100%', padding: 10, marginTop: 6 }}
-            >
-              <option value="contractor">Contractor</option>
-              <option value="owner">Infrastructure Owner</option>
-            </select>
-          </div>
-        )}
-
-        {error && <div className="error-box">{error}</div>}
-        <button type="submit" disabled={loading} style={{ padding: 12, width: '100%' }}>
-          {loading ? '…' : mode === 'login' ? 'Sign in' : 'Create account'}
-        </button>
-      </form>
     </main>
   );
 }

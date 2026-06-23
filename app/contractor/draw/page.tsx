@@ -5,6 +5,7 @@ import { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
 import type { LatLngTuple } from 'leaflet';
+import Navbar from '@/components/Navbar';
 
 // react-leaflet's MapContainer touches `window` at import time, which
 // breaks Next.js's server-side render pass. Dynamic-importing with
@@ -127,7 +128,9 @@ export default function ContractorDrawPage() {
   }
 
   return (
-    <main className="contractor-draw-page">
+    <main style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <Navbar title="Contractor — Draw Zone" />
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
       <div className="map-area">
         <MapContainer center={TAI_SENG_CENTER} zoom={16} style={{ height: '100%', width: '100%' }}>
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -139,15 +142,15 @@ export default function ContractorDrawPage() {
           />
         </MapContainer>
 
-        <div className="map-toolbar">
+        <div style={{ position: 'absolute', top: 14, right: 14, zIndex: 500, display: 'flex', gap: 8 }}>
           {phase !== 'drawing' ? (
-            <button onClick={startDrawing}>Draw working zone</button>
+            <button className="map-toolbar-btn" onClick={startDrawing}>Draw working zone</button>
           ) : (
-            <button onClick={finishDrawing} disabled={points.length < 3}>
+            <button className="map-toolbar-btn" onClick={finishDrawing} disabled={points.length < 3}>
               Done ({points.length} points)
             </button>
           )}
-          <button onClick={resetAll}>Clear</button>
+          <button className="map-toolbar-btn" onClick={resetAll}>Clear</button>
         </div>
       </div>
 
@@ -192,6 +195,7 @@ export default function ContractorDrawPage() {
           </div>
         )}
       </aside>
+      </div>
     </main>
   );
 }

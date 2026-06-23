@@ -47,16 +47,19 @@ body {
   gap: 8px;
 }
 
-.map-toolbar button {
+.map-toolbar button,
+.map-toolbar-btn {
   background: var(--panel);
   border: 1px solid var(--line);
   color: var(--paper);
   padding: 8px 14px;
   border-radius: 4px;
   cursor: pointer;
+  font-size: 13px;
 }
 
-.map-toolbar button:hover {
+.map-toolbar button:hover,
+.map-toolbar-btn:hover {
   background: var(--panel-raised);
 }
 

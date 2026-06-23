@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import Navbar from '@/components/Navbar';
 import {
   parseGisFile,
   flattenLineFeatures,
@@ -92,6 +93,8 @@ export default function OwnerUploadPage() {
   }
 
   return (
+    <>
+    <Navbar title="Owner — Upload Baseline" />
     <main className="upload-page">
       <h1>Upload underground infrastructure baseline</h1>
       <p className="hint">
@@ -153,5 +156,6 @@ export default function OwnerUploadPage() {
 
       {submitResult && <div className="success-box">{submitResult}</div>}
     </main>
+    </>
   );
 }
