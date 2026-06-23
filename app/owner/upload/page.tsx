@@ -198,9 +198,9 @@ export default function OwnerUploadPage() {
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                style={{ width: '100%', padding: 12, marginTop: 16, border: 'none', borderRadius: 4, background: 'var(--orange)', color: '#1a0d04', fontWeight: 600, cursor: 'pointer' }}
+                style={{ width: '100%', padding: 12, marginTop: 16, border: 'none', borderRadius: 4, background: submitting ? 'var(--grey)' : 'var(--orange)', color: '#1a0d04', fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer' }}
               >
-                {submitting ? 'Saving…' : `Save ${featureCount} lines to baseline`}
+                {submitting ? `Saving… do not click again` : `Save ${featureCount} lines to baseline`}
               </button>
             </div>
           )}

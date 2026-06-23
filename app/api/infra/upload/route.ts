@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { gisUploads } from '@/lib/db/schema';
 import { insertInfraLines } from '@/lib/db/spatial';
@@ -45,6 +45,16 @@ export async function POST(req: NextRequest) {
   }
 
   const { sourceFormat, features } = parsed.data;
+
+  // Prevent duplicate processing — if there's already a processing upload, reject
+  const existing = await db.select().from(gisUploads)
+    .where(eq(gisUploads.ownerId, user.id))
+    .orderBy(desc(gisUploads.createdAt))
+    .limit(1);
+  if (existing[0]?.status === 'processing') {
+    return NextResponse.json({ error: 'An upload is already in progress. Please wait.' }, { status: 409 });
+  }
+
   const uploadId = randomUUID();
 
   await db.insert(gisUploads).values({
