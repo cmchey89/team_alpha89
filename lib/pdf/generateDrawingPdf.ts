@@ -38,7 +38,7 @@ async function drawOsmTiles(
   mapX: number, mapY: number, mapW: number, mapH: number,
   minLng: number, maxLng: number, minLat: number, maxLat: number
 ) {
-  const zoom = 14;
+  const zoom = 12;
   const tileXmin = lon2tile(minLng, zoom);
   const tileXmax = lon2tile(maxLng, zoom);
   const tileYmin = lat2tile(maxLat, zoom); // note: y is inverted
