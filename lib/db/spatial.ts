@@ -72,10 +72,20 @@ export async function insertInfraLines(rows: {
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
     const sqlClient = rawSql();
-    const valueClauses = chunk.map((p) =>
-      `('${p.ownerId}', ${p.sourceUploadId ? `'${p.sourceUploadId}'` : 'NULL'}, '${p.utilityType}', ${p.label ? `'${p.label.replace(/'/g, "''")}'` : 'NULL'}, ${p.sourceProperties ? `'${JSON.stringify(p.sourceProperties).replace(/'/g, "''")}'::jsonb` : 'NULL'}, ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON('${JSON.stringify(p.geometry)}'), 3414), 4326))`
-    ).join(', ');
-    await sqlClient`INSERT INTO infra_lines (owner_id, source_upload_id, utility_type, label, source_properties, geom) VALUES ${sqlClient.unsafe(valueClauses)}`;
+    for (const p of chunk) {
+      const geomJson = JSON.stringify(p.geometry);
+      await sqlClient`
+        INSERT INTO infra_lines (owner_id, source_upload_id, utility_type, label, source_properties, geom)
+        VALUES (
+          ${p.ownerId},
+          ${p.sourceUploadId ?? null},
+          ${p.utilityType},
+          ${p.label ?? null},
+          ${p.sourceProperties ? JSON.stringify(p.sourceProperties) : null}::jsonb,
+          ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON(${geomJson}), 3414), 4326)
+        )
+      `;
+    }
   }
 }
 
