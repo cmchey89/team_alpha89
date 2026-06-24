@@ -117,8 +117,6 @@ export default function ContractorDrawPage() {
     }).catch(() => { router.replace('/login'); });
   }, [router]);
 
-  if (!authChecked) return null; // blank while checking — prevents flash of draw UI
-
   const handlePointAdded = useCallback((p: LatLngTuple) => {
     setPoints((prev) => [...prev, p]);
   }, []);
@@ -134,6 +132,8 @@ export default function ContractorDrawPage() {
   const handleUndo = useCallback(() => {
     setPoints((prev) => prev.slice(0, -1));
   }, []);
+
+  if (!authChecked) return null;
 
   function startDrawing() {
     setPoints([]);
