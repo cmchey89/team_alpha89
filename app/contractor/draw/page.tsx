@@ -1,11 +1,12 @@
 // app/contractor/draw/page.tsx
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import 'leaflet/dist/leaflet.css';
 import type { LatLngTuple } from 'leaflet';
+import { useMap } from 'react-leaflet';
 import { generateDrawingPdf } from '@/lib/pdf/generateDrawingPdf';
 import type { MapView } from '@/components/MapTracker';
 
@@ -41,6 +42,15 @@ interface Conflict {
 interface ReleaseData {
   conflicts: Conflict[];
   zoneGeoJSON: { type: string; coordinates: unknown } | null;
+}
+
+// Captures the Leaflet map instance into a ref so the parent can call
+// map.dragging.disable/enable synchronously from a button click handler —
+// without waiting for a dynamic import to load or an effect to run.
+function MapCapture({ mapRef }: { mapRef: { current: ReturnType<typeof useMap> | null } }) {
+  const map = useMap();
+  mapRef.current = map; // ref mutation during render is fine — no state, no re-render
+  return null;
 }
 
 function shoelaceAreaSqm(points: LatLngTuple[]): number {
@@ -110,6 +120,7 @@ function FomoPayModal({
 
 export default function ContractorDrawPage() {
   const router = useRouter();
+  const mapRef = useRef<ReturnType<typeof useMap> | null>(null);
   const [phase, setPhase] = useState<Phase>('idle');
   const [points, setPoints] = useState<LatLngTuple[]>([]);
   const [result, setResult] = useState<CheckResult | null>(null);
@@ -155,6 +166,7 @@ export default function ContractorDrawPage() {
   if (!authChecked) return null;
 
   function startDrawing() {
+    mapRef.current?.dragging.disable(); // synchronous — fires before any React re-render
     setPoints([]);
     setResult(null);
     setError(null);
@@ -163,6 +175,7 @@ export default function ContractorDrawPage() {
 
   function finishDrawing() {
     if (points.length < 3) return;
+    mapRef.current?.dragging.enable();
     setPhase('review');
   }
 
@@ -212,6 +225,7 @@ export default function ContractorDrawPage() {
   }
 
   function resetAll() {
+    mapRef.current?.dragging.enable();
     setPoints([]);
     setResult(null);
     setReleaseData(null);
@@ -262,6 +276,7 @@ export default function ContractorDrawPage() {
             style={{ height: '100%', width: '100%' }}
           >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <MapCapture mapRef={mapRef} />
             <MapFreezer frozen={phase === 'drawing'} />
             <MapSearch disabled={phase === 'drawing'} />
             <ZoneDrawer
