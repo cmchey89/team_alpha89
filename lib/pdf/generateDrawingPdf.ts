@@ -62,7 +62,7 @@ async function drawOsmTiles(
   for (let tx = tileXmin; tx <= tileXmax; tx++) {
     for (let ty = tileYmin; ty <= tileYmax; ty++) {
       try {
-        const url = `https://tile.openstreetmap.org/${zoom}/${tx}/${ty}.png`;
+        const url = `/api/tiles/${zoom}/${tx}/${ty}`;
         const resp = await fetch(url);
         if (!resp.ok) continue;
         const blob = await resp.blob();
@@ -103,15 +103,24 @@ function collectPolygonCoords(geojson: { type: string; coordinates: any }): numb
 }
 
 export async function generateDrawingPdf(data: DrawingData) {
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-  const PW = doc.internal.pageSize.getWidth();   // ~841.89 pt
-  const PH = doc.internal.pageSize.getHeight();  // ~595.28 pt
+  try {
+  return await _generateDrawingPdf(data);
+  } catch (err) {
+    console.error('[PDF] generation failed:', err);
+    alert('PDF generation failed: ' + (err instanceof Error ? err.message : String(err)));
+  }
+}
+
+async function _generateDrawingPdf(data: DrawingData) {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a3' });
+  const PW = doc.internal.pageSize.getWidth();   // ~1190.55 pt
+  const PH = doc.internal.pageSize.getHeight();  // ~841.89 pt
 
   // Layout constants
-  const MARGIN    = 14;
-  const BANNER_W  = 120;
-  const TITLE_H   = 48;
-  const INNER_PAD = 5;
+  const MARGIN    = 18;
+  const BANNER_W  = 160;
+  const TITLE_H   = 56;
+  const INNER_PAD = 6;
 
   const frameX = MARGIN, frameY = MARGIN;
   const frameW = PW - MARGIN * 2, frameH = PH - MARGIN * 2;
@@ -209,17 +218,17 @@ export async function generateDrawingPdf(data: DrawingData) {
 
   doc.setTextColor(20, 20, 20);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-  doc.text('DIGCLEAR — UNDERGROUND UTILITY CLEARANCE DRAWING', innerX + 8, innerY + 16);
+  doc.setFontSize(18);
+  doc.text('DIGCLEAR — UNDERGROUND UTILITY CLEARANCE DRAWING', innerX + 10, innerY + 20);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
+  doc.setFontSize(10);
   doc.setTextColor(80, 80, 80);
   const affected = data.conflicts.length;
   const resultLine = affected === 0
     ? 'RESULT: CLEAR — no recorded underground utility overlaps this working zone'
     : `RESULT: AFFECTED — overlaps ${affected} recorded utility line${affected > 1 ? 's' : ''}, shown on map`;
-  doc.text(resultLine, innerX + 8, innerY + 29);
-  doc.text('Tai Seng, Singapore  ·  Datum: SVY21', innerX + 8, innerY + 40);
+  doc.text(resultLine, innerX + 10, innerY + 36);
+  doc.text('Tai Seng, Singapore  ·  Datum: SVY21', innerX + 10, innerY + 49);
 
   // ---- Map background ----
   doc.setFillColor(255, 255, 255);
@@ -311,24 +320,20 @@ export async function generateDrawingPdf(data: DrawingData) {
   const divColor:   [number, number, number] = [210, 210, 208];
 
   // Each cell has a fixed height; label + value are vertically centered inside it.
-  // Label is 6.5pt (~8pt line), value is 10pt (~13pt line), total block ~21pt.
-  const CELL_H = 36;
-  const BLOCK_H = 21; // label line + gap + value line
+  const CELL_H = 46;
+  const BLOCK_H = 26;
   let cy2 = by;
 
   function bannerField(label: string, value: string) {
     const blockTop = cy2 + (CELL_H - BLOCK_H) / 2;
-    // Grey label
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
+    doc.setFontSize(8);
     doc.setTextColor(...labelColor);
-    doc.text(label.toUpperCase(), bx + 8, blockTop + 7);
-    // Bold value
+    doc.text(label.toUpperCase(), bx + 10, blockTop + 8);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(12);
     doc.setTextColor(...valueColor);
-    doc.text(value, bx + 8, blockTop + 18, { maxWidth: bw - 12 });
-    // Bottom divider
+    doc.text(value, bx + 10, blockTop + 21, { maxWidth: bw - 14 });
     cy2 += CELL_H;
     doc.setDrawColor(...divColor);
     doc.setLineWidth(0.3);
@@ -345,50 +350,50 @@ export async function generateDrawingPdf(data: DrawingData) {
 
   // ---- Legend ----
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
+  doc.setFontSize(8);
   doc.setTextColor(...labelColor);
-  doc.text('LEGEND', bx + 8, cy2 + 8);
-  cy2 += 14;
+  doc.text('LEGEND', bx + 10, cy2 + 10);
+  cy2 += 18;
 
-  const swatchW = 10, swatchH = 6;
+  const swatchW = 14, swatchH = 8;
   doc.setFillColor(58, 125, 92);
-  doc.rect(bx + 8, cy2 - 5, swatchW, swatchH, 'F');
-  doc.setFontSize(7);
+  doc.rect(bx + 10, cy2 - 6, swatchW, swatchH, 'F');
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...valueColor);
-  doc.text('Working zone', bx + 8 + swatchW + 4, cy2);
-  cy2 += 11;
+  doc.text('Working zone', bx + 10 + swatchW + 5, cy2);
+  cy2 += 14;
 
   if (data.conflicts.length > 0) {
     const [sr, sg, sb] = hexToRgb(UTILITY_COLORS[data.conflicts[0].utilityType] || '#9E9E9E');
     doc.setFillColor(sr, sg, sb);
-    doc.rect(bx + 8, cy2 - 5, swatchW, swatchH, 'F');
-    doc.setFontSize(7);
+    doc.rect(bx + 10, cy2 - 6, swatchW, swatchH, 'F');
+    doc.setFontSize(9);
     doc.setTextColor(...valueColor);
-    doc.text('Affected utility line', bx + 8 + swatchW + 4, cy2);
-    cy2 += 11;
+    doc.text('Affected utility line', bx + 10 + swatchW + 5, cy2);
+    cy2 += 14;
   }
 
   // ---- Notes section ----
-  cy2 += 4;
+  cy2 += 6;
   doc.setDrawColor(...divColor);
   doc.setLineWidth(0.3);
   doc.line(bx, cy2, bx + bw, cy2);
-  cy2 += 8;
+  cy2 += 10;
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
+  doc.setFontSize(8);
   doc.setTextColor(...labelColor);
-  doc.text('NOTES', bx + 8, cy2);
-  cy2 += 8;
+  doc.text('NOTES', bx + 10, cy2);
+  cy2 += 10;
 
   for (const note of NOTES) {
-    const wrapped = doc.splitTextToSize(note, bw - 14);
+    const wrapped = doc.splitTextToSize(note, bw - 16);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6);
+    doc.setFontSize(8);
     doc.setTextColor(...valueColor);
-    doc.text(wrapped, bx + 8, cy2);
-    cy2 += wrapped.length * 7.5 + 3;
+    doc.text(wrapped, bx + 10, cy2);
+    cy2 += wrapped.length * 10 + 4;
   }
 
   doc.save(`DigClear-${data.reference}.pdf`);

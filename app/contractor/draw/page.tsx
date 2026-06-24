@@ -12,6 +12,7 @@ const MapContainer = dynamic(() => import('react-leaflet').then((m) => m.MapCont
 const TileLayer    = dynamic(() => import('react-leaflet').then((m) => m.TileLayer), { ssr: false });
 const ZoneDrawer   = dynamic(() => import('@/components/ZoneDrawer'), { ssr: false });
 const MapTracker   = dynamic(() => import('@/components/MapTracker'), { ssr: false });
+const MapSearch    = dynamic(() => import('@/components/MapSearch'), { ssr: false });
 
 const TAI_SENG_CENTER: LatLngTuple = [1.3358, 103.8879];
 const OWNER_ID = 'afc4cd7e-153c-47d3-a428-356058108f04';
@@ -226,6 +227,7 @@ export default function ContractorDrawPage() {
             style={{ height: '100%', width: '100%' }}
           >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <MapSearch disabled={phase === 'drawing'} />
             <ZoneDrawer
               active={phase === 'drawing'}
               points={points}
