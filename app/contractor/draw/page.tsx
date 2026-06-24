@@ -3,6 +3,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import 'leaflet/dist/leaflet.css';
 import type { LatLngTuple } from 'leaflet';
 import { generateDrawingPdf } from '@/lib/pdf/generateDrawingPdf';
@@ -93,6 +94,7 @@ function FomoPayModal({
 }
 
 export default function ContractorDrawPage() {
+  const router = useRouter();
   const [phase, setPhase] = useState<Phase>('idle');
   const [points, setPoints] = useState<LatLngTuple[]>([]);
   const [result, setResult] = useState<CheckResult | null>(null);
@@ -102,13 +104,20 @@ export default function ContractorDrawPage() {
   const [error, setError] = useState<string | null>(null);
   const [showFomo, setShowFomo] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
+  const [authChecked, setAuthChecked] = useState(false);
 
-  // Fetch current user email for display
+  // Auth guard — redirect to login if no valid session
   useEffect(() => {
-    fetch('/api/auth/me').then(r => r.json()).then(d => {
+    fetch('/api/auth/me').then(r => {
+      if (r.status === 401) { router.replace('/login'); return null; }
+      return r.json();
+    }).then(d => {
       if (d?.email) setUserEmail(d.email);
-    }).catch(() => {});
-  }, []);
+      setAuthChecked(true);
+    }).catch(() => { router.replace('/login'); });
+  }, [router]);
+
+  if (!authChecked) return null; // blank while checking — prevents flash of draw UI
 
   const handlePointAdded = useCallback((p: LatLngTuple) => {
     setPoints((prev) => [...prev, p]);

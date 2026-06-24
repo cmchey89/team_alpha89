@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
 import Navbar from '@/components/Navbar';
@@ -49,6 +50,7 @@ function geomToLatLngs(geometry: { type: string; coordinates: any }): [number, n
 }
 
 export default function OwnerUploadPage() {
+  const router = useRouter();
   const [parsing, setParsing]       = useState(false);
   const [error, setError]           = useState<string | null>(null);
   const [parsed, setParsed]         = useState<ParsedGisResult | null>(null);
@@ -57,6 +59,18 @@ export default function OwnerUploadPage() {
   const [submitting, setSubmitting] = useState(false);
   const [lines, setLines]           = useState<InfraLine[]>([]);
   const [loadingMap, setLoadingMap] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => {
+      if (r.status === 401) { router.replace('/login'); return null; }
+      return r.json();
+    }).then(d => {
+      if (d) setAuthChecked(true);
+    }).catch(() => { router.replace('/login'); });
+  }, [router]);
+
+  if (!authChecked) return null;
 
   async function fetchLines() {
     setLoadingMap(true);
