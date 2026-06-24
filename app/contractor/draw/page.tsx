@@ -112,6 +112,10 @@ export default function ContractorDrawPage() {
     setPoints((prev) => [...prev, p]);
   }, []);
 
+  const handlePointMoved = useCallback((index: number, p: LatLngTuple) => {
+    setPoints((prev) => prev.map((pt, i) => (i === index ? p : pt)));
+  }, []);
+
   function startDrawing() {
     setPoints([]);
     setResult(null);
@@ -217,6 +221,7 @@ export default function ContractorDrawPage() {
               active={phase === 'drawing'}
               points={points}
               onPointAdded={handlePointAdded}
+              onPointMoved={handlePointMoved}
               onDoubleClickFinish={finishDrawing}
             />
             <MapTracker onChange={setMapView} />
@@ -240,7 +245,7 @@ export default function ContractorDrawPage() {
           <div className="map-legend">
             <div className="map-legend-title">Legend</div>
             <div className="map-legend-row">
-              <span className="map-legend-swatch" style={{ background: '#5fbe8e' }} />
+              <span className="map-legend-swatch" style={{ background: '#0072CE' }} />
               Working zone
             </div>
             {(phase === 'affected_unpaid' || phase === 'affected_paid') && (
@@ -286,7 +291,7 @@ export default function ContractorDrawPage() {
                   <span className="v">{points.length}</span>
                 </div>
                 <p className="step-empty" style={{ marginTop: 12 }}>
-                  Click to add points. Double-click or click <strong>✓ Done</strong> to finish.
+                  Click to add points. Drag any vertex to adjust it. Double-click or click <strong>✓ Done</strong> to finish.
                 </p>
               </div>
             </>
@@ -300,7 +305,6 @@ export default function ContractorDrawPage() {
               </div>
               <div className="ticket-body">
                 <div className="field-row"><span className="k">Zone vertices</span><span className="v">{points.length}</span></div>
-                <div className="field-row"><span className="k">Approx. area</span><span className="v">{area.toLocaleString()} m²</span></div>
                 <p className="step-empty" style={{ marginTop: 12 }}>
                   Confirm to submit this zone for a check against our records, or redraw it.
                 </p>
@@ -330,7 +334,6 @@ export default function ContractorDrawPage() {
               </div>
               <div className="ticket-body">
                 <div className="field-row"><span className="k">Zone vertices</span><span className="v">{points.length}</span></div>
-                <div className="field-row"><span className="k">Approx. area</span><span className="v">{area.toLocaleString()} m²</span></div>
                 <div className="field-row"><span className="k">Reference</span><span className="v">{result.reference}</span></div>
                 <div className="stamp-wrap"><div className="stamp">CLEAR</div></div>
                 <div style={{ marginTop: 32 }}>
@@ -352,17 +355,12 @@ export default function ContractorDrawPage() {
               </div>
               <div className="ticket-body">
                 <div className="field-row"><span className="k">Zone vertices</span><span className="v">{points.length}</span></div>
-                <div className="field-row"><span className="k">Approx. area</span><span className="v">{area.toLocaleString()} m²</span></div>
                 <div className="field-row"><span className="k">Reference</span><span className="v">{result.reference}</span></div>
                 <div className="stamp-wrap"><div className="stamp risk">AFFECTED</div></div>
                 <div style={{ marginTop: 32 }}>
                   <div className="risk-banner danger">
                     <span className="risk-icon">⚠</span>
-                    <div>
-                      This is an <strong>affected work request</strong>. Your working zone overlaps{' '}
-                      <strong>{result.conflictCount}</strong> underground utility line{result.conflictCount > 1 ? 's' : ''} on record.
-                      Pay the drawing fee to see exactly where, and to download the drawing.
-                    </div>
+                    <div>This is an <strong>affected work request</strong>. Pay the drawing fee to see the affected utilities and download the drawing.</div>
                   </div>
                 </div>
                 <div className="price-line">
@@ -383,13 +381,12 @@ export default function ContractorDrawPage() {
               </div>
               <div className="ticket-body">
                 <div className="field-row"><span className="k">Reference</span><span className="v">{result.reference}</span></div>
-                <div className="field-row"><span className="k">Approx. area</span><span className="v">{area.toLocaleString()} m²</span></div>
                 <div className="field-row"><span className="k">Paid via</span><span className="v">FOMO Pay</span></div>
                 <div className="stamp-wrap"><div className="stamp risk">AFFECTED</div></div>
                 <div style={{ marginTop: 32 }}>
                   <div className="risk-banner danger">
                     <span className="risk-icon">⚠</span>
-                    <div>Payment received. Download your drawing below. Do not excavate without reviewing it.</div>
+                    <div>Payment received. Download your drawing below. Please comply all Earthworks Requirements by IMDA before commence any earthworks.</div>
                   </div>
                 </div>
                 <div className="download-row" style={{ marginTop: 14 }}>
