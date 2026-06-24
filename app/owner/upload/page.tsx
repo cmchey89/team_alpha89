@@ -38,12 +38,11 @@ interface InfraLine {
 }
 
 function geomToLatLngs(geometry: { type: string; coordinates: unknown }): [number, number][][] {
-  const coords = geometry.coordinates as number[][];
   if (geometry.type === 'LineString') {
-    return [(coords as number[][]).map(([lng, lat]) => [lat, lng] as [number, number])];
+    return [(geometry.coordinates as number[][]).map(([lng, lat]) => [lat, lng] as [number, number])];
   }
   if (geometry.type === 'MultiLineString') {
-    return (coords as number[][][]).map((line) =>
+    return (geometry.coordinates as number[][][]).map((line) =>
       line.map(([lng, lat]) => [lat, lng] as [number, number])
     );
   }
