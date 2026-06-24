@@ -265,31 +265,36 @@ export async function generateDrawingPdf(data: DrawingData) {
   // ====================================================================
   doc.setFillColor(255, 255, 255);
   doc.rect(bx, by, bw, bh, 'F');
+  // Full border around banner, matching map border weight
   doc.setDrawColor(20, 20, 20);
-  doc.setLineWidth(0.6);
-  doc.line(bx, by, bx, by + bh); // left divider
+  doc.setLineWidth(0.5);
+  doc.rect(bx, by, bw, bh, 'S');
 
   const labelColor: [number, number, number] = [110, 115, 112];
   const valueColor: [number, number, number] = [20, 20, 20];
   const divColor:   [number, number, number] = [210, 210, 208];
 
-  let cy2 = by + 14;
+  const CELL_H = 36; // fixed cell height for each banner field
+  let cy2 = by;
 
   function bannerField(label: string, value: string) {
+    const cellTop = cy2;
+    const cellMid = cellTop + CELL_H / 2;
+    // Grey label — slightly above center
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.setTextColor(...labelColor);
-    doc.text(label.toUpperCase(), bx + 8, cy2);
-    cy2 += 9;
+    doc.text(label.toUpperCase(), bx + bw / 2, cellMid - 6, { align: 'center' });
+    // Bold value — slightly below center
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(...valueColor);
-    doc.text(value, bx + 8, cy2, { maxWidth: bw - 12 });
-    cy2 += 10;
+    doc.text(value, bx + bw / 2, cellMid + 6, { align: 'center', maxWidth: bw - 12 });
+    // Bottom divider
+    cy2 += CELL_H;
     doc.setDrawColor(...divColor);
     doc.setLineWidth(0.3);
-    doc.line(bx + 4, cy2, bx + bw - 4, cy2);
-    cy2 += 10;
+    doc.line(bx, cy2, bx + bw, cy2);
   }
 
   const company = data.contractorEmail.split('@')[0].toUpperCase();
@@ -301,49 +306,51 @@ export async function generateDrawingPdf(data: DrawingData) {
   bannerField('Paid via', 'FOMO Pay');
 
   // ---- Legend ----
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.5);
   doc.setTextColor(...labelColor);
-  doc.text('LEGEND', bx + 8, cy2);
-  cy2 += 10;
+  doc.text('LEGEND', bx + bw / 2, cy2 + 8, { align: 'center' });
+  cy2 += 14;
 
+  // Working zone row — swatch left-of-center, label right-of-swatch
+  const swatchW = 12, swatchH = 7, swatchX = bx + bw / 2 - 30;
   doc.setFillColor(58, 125, 92);
-  doc.rect(bx + 8, cy2 - 5, 12, 7, 'F');
-  doc.setFontSize(8.5);
+  doc.rect(swatchX, cy2 - 5, swatchW, swatchH, 'F');
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...valueColor);
-  doc.text('Working zone', bx + 24, cy2);
-  cy2 += 13;
+  doc.text('Working zone', swatchX + swatchW + 4, cy2);
+  cy2 += 12;
 
   if (data.conflicts.length > 0) {
     const [sr, sg, sb] = hexToRgb(UTILITY_COLORS[data.conflicts[0].utilityType] || '#9E9E9E');
     doc.setFillColor(sr, sg, sb);
-    doc.rect(bx + 8, cy2 - 5, 12, 7, 'F');
-    doc.setFontSize(8.5);
+    doc.rect(swatchX, cy2 - 5, swatchW, swatchH, 'F');
+    doc.setFontSize(8);
     doc.setTextColor(...valueColor);
-    doc.text('Affected utility line', bx + 24, cy2);
-    cy2 += 13;
+    doc.text('Affected utility line', swatchX + swatchW + 4, cy2);
+    cy2 += 12;
   }
 
   // ---- Notes section ----
   cy2 += 4;
   doc.setDrawColor(...divColor);
   doc.setLineWidth(0.3);
-  doc.line(bx + 4, cy2, bx + bw - 4, cy2);
+  doc.line(bx, cy2, bx + bw, cy2);
   cy2 += 8;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.5);
   doc.setTextColor(...labelColor);
-  doc.text('NOTES', bx + 8, cy2);
+  doc.text('NOTES', bx + bw / 2, cy2, { align: 'center' });
   cy2 += 8;
 
   for (const note of NOTES) {
-    const wrapped = doc.splitTextToSize(note, bw - 14);
+    const wrapped = doc.splitTextToSize(note, bw - 12);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.setTextColor(...valueColor);
-    doc.text(wrapped, bx + 8, cy2);
+    doc.text(wrapped, bx + bw / 2, cy2, { align: 'center' });
     cy2 += wrapped.length * 8 + 4;
   }
 
