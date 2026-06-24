@@ -215,7 +215,16 @@ export default function ContractorDrawPage() {
 
         {/* ---- Map ---- */}
         <div className="map-area">
-          <MapContainer center={TAI_SENG_CENTER} zoom={16} style={{ height: '100%', width: '100%' }} zoomControl={false}>
+          <MapContainer
+            center={TAI_SENG_CENTER}
+            zoom={16}
+            minZoom={15}
+            maxZoom={17}
+            scrollWheelZoom={false}
+            doubleClickZoom={false}
+            zoomControl={false}
+            style={{ height: '100%', width: '100%' }}
+          >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <ZoneDrawer
               active={phase === 'drawing'}
