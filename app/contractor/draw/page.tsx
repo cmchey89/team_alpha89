@@ -236,9 +236,9 @@ export default function ContractorDrawPage() {
         <div className="map-area">
           <MapContainer
             center={TAI_SENG_CENTER}
-            zoom={18}
-            minZoom={17}
-            maxZoom={19}
+            zoom={17}
+            minZoom={16}
+            maxZoom={18}
             scrollWheelZoom={false}
             doubleClickZoom={false}
             zoomControl={false}

@@ -248,7 +248,7 @@ async function _generate(data: DrawingData) {
   }
 
   // ---- Tile zoom ----
-  const tileZoom = Math.min(19, Math.max(15, data.mapView?.zoom ?? 17));
+  const tileZoom = Math.min(18, Math.max(15, data.mapView?.zoom ?? 17));
 
   // ============================================================
   // DRAW PAGE
