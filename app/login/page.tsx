@@ -101,7 +101,7 @@ export default function LoginPage() {
               style={{
                 display: 'block', width: '100%', padding: '10px 12px',
                 background: 'var(--bg)', border: '1px solid var(--line)',
-                borderRadius: '6px', color: 'var(--paper)', fontSize: '14px',
+                borderRadius: '6px', color: '#0d1f3c', fontSize: '14px',
               }}
             />
           </div>
@@ -119,8 +119,8 @@ export default function LoginPage() {
               placeholder={mode === 'signup' ? 'Minimum 8 characters' : '••••••••'}
               style={{
                 display: 'block', width: '100%', padding: '10px 12px',
-                background: 'var(--bg)', border: '1px solid var(--line)',
-                borderRadius: '6px', color: 'var(--paper)', fontSize: '14px',
+                background: '#ffffff', border: '1px solid var(--line)',
+                borderRadius: '6px', color: '#0d1f3c', fontSize: '14px',
               }}
             />
           </div>
@@ -135,8 +135,8 @@ export default function LoginPage() {
                 onChange={(e) => setRole(e.target.value as 'owner' | 'contractor')}
                 style={{
                   display: 'block', width: '100%', padding: '10px 12px',
-                  background: 'var(--bg)', border: '1px solid var(--line)',
-                  borderRadius: '6px', color: 'var(--paper)', fontSize: '14px',
+                  background: '#ffffff', border: '1px solid var(--line)',
+                  borderRadius: '6px', color: '#0d1f3c', fontSize: '14px',
                 }}
               >
                 <option value="contractor">Contractor</option>
@@ -152,7 +152,7 @@ export default function LoginPage() {
             disabled={loading}
             style={{
               width: '100%', padding: '12px',
-              background: 'var(--orange)', color: '#1a0d04',
+              background: 'var(--accent)', color: '#ffffff',
               border: 'none', borderRadius: '6px',
               fontWeight: 700, fontSize: '14px', cursor: 'pointer',
               marginTop: '8px', opacity: loading ? 0.7 : 1,
