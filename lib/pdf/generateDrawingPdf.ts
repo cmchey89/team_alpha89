@@ -124,9 +124,9 @@ export async function generateDrawingPdf(data: DrawingData) {
   const mapH = innerH - TITLE_H;
 
   const bx = innerX + innerW - BANNER_W;
-  const by = innerY;
+  const by = mapY;        // starts at same top edge as the map
   const bw = BANNER_W;
-  const bh = innerH;
+  const bh = mapH;        // same height as the map
 
   // --- Bounding box: always use zone + conflicts, padded ---
   // Never use the raw user view bounds (prevents whole-Singapore drawings)
@@ -169,7 +169,7 @@ export async function generateDrawingPdf(data: DrawingData) {
   // ---- Title strip ----
   doc.setDrawColor(20, 20, 20);
   doc.setLineWidth(0.6);
-  doc.line(innerX, innerY + TITLE_H, innerX + innerW - BANNER_W, innerY + TITLE_H);
+  doc.line(innerX, innerY + TITLE_H, innerX + innerW, innerY + TITLE_H);
 
   doc.setTextColor(20, 20, 20);
   doc.setFont('helvetica', 'bold');
@@ -346,20 +346,6 @@ export async function generateDrawingPdf(data: DrawingData) {
     doc.text(wrapped, bx + 8, cy2);
     cy2 += wrapped.length * 8 + 4;
   }
-
-  // ---- Footer disclaimer pinned to bottom ----
-  const footY = by + bh - 16;
-  doc.setDrawColor(...divColor);
-  doc.setLineWidth(0.3);
-  doc.line(bx + 4, footY - 6, bx + bw - 4, footY - 6);
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(6);
-  doc.setTextColor(...labelColor);
-  doc.text(
-    doc.splitTextToSize('Do not excavate without reviewing this drawing in full.', bw - 16),
-    bx + 8,
-    footY
-  );
 
   doc.save(`DigClear-${data.reference}.pdf`);
 }
