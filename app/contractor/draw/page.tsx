@@ -392,13 +392,6 @@ export default function ContractorDrawPage() {
                     <div>Payment received. Download your drawing below. Do not excavate without reviewing it.</div>
                   </div>
                 </div>
-                {releaseData.conflicts?.length > 0 && (
-                  <div className="conflict-list" style={{ marginTop: 12 }}>
-                    {releaseData.conflicts.map((c: any) => (
-                      <div key={c.infraLineId}>⚠ {c.utilityType?.replace('_', ' ')} ({c.infraLineId?.slice(0, 8)}…)</div>
-                    ))}
-                  </div>
-                )}
                 <div className="download-row" style={{ marginTop: 14 }}>
                   <button
                     className="btn btn-primary btn-sm"

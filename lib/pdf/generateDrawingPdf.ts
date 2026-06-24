@@ -47,7 +47,7 @@ async function drawOsmTiles(
 ) {
   const tileXmin = lon2tile(minLng, zoom);
   const tileXmax = lon2tile(maxLng, zoom);
-  const tileYmin = lat2tile(maxLat, zoom); // note: y is inverted
+  const tileYmin = lat2tile(maxLat, zoom);
   const tileYmax = lat2tile(minLat, zoom);
 
   const lngSpan = maxLng - minLng;
@@ -103,29 +103,50 @@ function collectPolygonCoords(geojson: { type: string; coordinates: any }): numb
 }
 
 export async function generateDrawingPdf(data: DrawingData) {
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' });
+  // A4 landscape — matches the reference drawing sheet
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
 
-  const pageW = doc.internal.pageSize.getWidth();
-  const pageH = doc.internal.pageSize.getHeight();
+  const PW = doc.internal.pageSize.getWidth();  // ~841.89 pt
+  const PH = doc.internal.pageSize.getHeight(); // ~595.28 pt
 
-  // Layout
-  const sideW = 70;
-  const mapX = 10;
-  const mapY = 10;
-  const mapW = pageW - sideW - 15;
-  const mapH = pageH - 20;
+  // Layout constants (pt)
+  const MARGIN   = 14;   // outer margin
+  const BANNER_W = 155;  // right-hand info column width
+  const TITLE_H  = 48;   // title strip height
+  const INNER_PAD = 5;   // gap inside double border
 
-  // --- Gather all coordinates to compute bounding box ---
+  // Outer frame
+  const frameX = MARGIN;
+  const frameY = MARGIN;
+  const frameW = PW - MARGIN * 2;
+  const frameH = PH - MARGIN * 2;
+
+  // Inner usable rect (inside double border)
+  const innerX = frameX + INNER_PAD;
+  const innerY = frameY + INNER_PAD;
+  const innerW = frameW - INNER_PAD * 2;
+  const innerH = frameH - INNER_PAD * 2;
+
+  // Map area (left of banner, below title strip)
+  const mapX = innerX;
+  const mapY = innerY + TITLE_H;
+  const mapW = innerW - BANNER_W;
+  const mapH = innerH - TITLE_H;
+
+  // Banner rect
+  const bx = innerX + innerW - BANNER_W;
+  const by = innerY;
+  const bw = BANNER_W;
+  const bh = innerH;
+
+  // --- Gather bounding box ---
   const allCoords: number[][] = [];
   if (data.zoneGeoJSON) allCoords.push(...collectPolygonCoords(data.zoneGeoJSON));
   for (const c of data.conflicts) allCoords.push(...collectCoords(c.geometry));
-
   if (allCoords.length === 0) return;
 
   let minLng: number, maxLng: number, minLat: number, maxLat: number;
-
   if (data.mapView) {
-    // Use exact map bounds from the user's view
     ({ minLng, maxLng, minLat, maxLat } = data.mapView.bounds);
   } else {
     const lngs = allCoords.map((c) => c[0]);
@@ -144,202 +165,263 @@ export async function generateDrawingPdf(data: DrawingData) {
     return [x, y];
   }
 
-  // --- White page background ---
+  // ---- White page background ----
   doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, pageW, pageH, 'F');
+  doc.rect(0, 0, PW, PH, 'F');
 
-  // --- Map area white background (shows under tiles and fills any gaps) ---
+  // ---- Double border ----
+  doc.setDrawColor(20, 20, 20);
+  doc.setLineWidth(1.4);
+  doc.rect(frameX, frameY, frameW, frameH); // outer
+  doc.setLineWidth(0.5);
+  doc.rect(innerX, innerY, innerW, innerH); // inner
+
+  // ---- Title strip (top-left, above map) ----
+  // background already white; draw bottom border only
+  doc.setDrawColor(20, 20, 20);
+  doc.setLineWidth(0.6);
+  doc.line(innerX, innerY + TITLE_H, innerX + innerW - BANNER_W, innerY + TITLE_H);
+
+  doc.setTextColor(20, 20, 20);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text('DIGCLEAR — UNDERGROUND UTILITY CLEARANCE DRAWING', innerX + 8, innerY + 16);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(80, 80, 80);
+  const affected = data.conflicts.length;
+  const resultLine = affected === 0
+    ? 'RESULT: CLEAR — no recorded underground utility overlaps this working zone'
+    : `RESULT: AFFECTED — overlaps ${affected} recorded utility line${affected > 1 ? '(s)' : ''}, shown on map`;
+  doc.text(resultLine, innerX + 8, innerY + 29);
+  doc.text('Tai Seng, Singapore  ·  Datum: SVY21', innerX + 8, innerY + 40);
+
+  // ---- Map white background ----
   doc.setFillColor(255, 255, 255);
   doc.rect(mapX, mapY, mapW, mapH, 'F');
 
-  // --- Map background using OSM tiles ---
+  // ---- OSM tiles ----
   const tileZoom = data.mapView?.zoom ?? 15;
   await drawOsmTiles(doc, mapX, mapY, mapW, mapH, minLng, maxLng, minLat, maxLat, tileZoom);
-  // Mask any tile overflow outside the map rect with white
+
+  // Mask overflow outside map rect
   doc.setFillColor(255, 255, 255);
-  doc.rect(0, 0, mapX, pageH, 'F');                          // left
-  doc.rect(mapX + mapW, 0, pageW - mapX - mapW, pageH, 'F'); // right
-  doc.rect(0, 0, pageW, mapY, 'F');                          // top
-  doc.rect(0, mapY + mapH, pageW, pageH - mapY - mapH, 'F'); // bottom
+  doc.rect(0,       0,       mapX,          PH, 'F');
+  doc.rect(mapX + mapW, 0,   PW - mapX - mapW, PH, 'F');
+  doc.rect(0,       0,       PW,            mapY, 'F');
+  doc.rect(0, mapY + mapH,   PW, PH - mapY - mapH, 'F');
 
   // Map border
-  doc.setDrawColor(80, 80, 80);
+  doc.setDrawColor(20, 20, 20);
   doc.setLineWidth(0.5);
   doc.rect(mapX, mapY, mapW, mapH, 'S');
 
-  // --- Draw work zone polygon ---
+  // ---- Draw work zone polygon (green outline, no fill) ----
   if (data.zoneGeoJSON) {
     const coords = collectPolygonCoords(data.zoneGeoJSON);
     if (coords.length >= 3) {
       const pts = coords.map(([lng, lat]) => project(lng, lat));
-      doc.setDrawColor(95, 190, 142);
-      doc.setLineWidth(1.2);
-      // Draw as dashed outline only — no fill to avoid black artifact
+      doc.setDrawColor(58, 125, 92);
+      doc.setLineWidth(2.0);
       for (let i = 0; i < pts.length - 1; i++) {
         doc.line(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
       }
       doc.line(pts[pts.length - 1][0], pts[pts.length - 1][1], pts[0][0], pts[0][1]);
-      // Label
+
       const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
       const cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
-      doc.setFontSize(7);
-      doc.setTextColor(40, 160, 100);
+      doc.setFontSize(6.5);
+      doc.setTextColor(40, 120, 80);
       doc.setFont('helvetica', 'bold');
       doc.text('WORK ZONE', cx, cy, { align: 'center' });
       doc.setFont('helvetica', 'normal');
     }
   }
 
-  // --- Draw conflict lines ---
+  // ---- Draw conflict lines ----
   for (const c of data.conflicts) {
     const coords = collectCoords(c.geometry);
     if (coords.length < 2) continue;
     const color = UTILITY_COLORS[c.utilityType] || '#9E9E9E';
     const [r, g, b] = hexToRgb(color);
     doc.setDrawColor(r, g, b);
-    doc.setLineWidth(2);
+    doc.setLineWidth(2.5);
     const pts = coords.map(([lng, lat]: number[]) => project(lng, lat));
     for (let i = 0; i < pts.length - 1; i++) {
       doc.line(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
     }
   }
 
-  // --- North arrow ---
-  const nx = mapX + mapW - 12;
-  const ny = mapY + 12;
-  doc.setDrawColor(60, 60, 60);
-  doc.setFillColor(60, 60, 60);
-  doc.setLineWidth(0.4);
-  doc.line(nx, ny + 6, nx, ny - 6);
-  doc.triangle(nx - 2, ny - 2, nx + 2, ny - 2, nx, ny - 7, 'F');
+  // ---- North arrow ----
+  const nx = mapX + mapW - 14;
+  const ny = mapY + 14;
+  doc.setDrawColor(40, 40, 40);
+  doc.setFillColor(40, 40, 40);
+  doc.setLineWidth(0.5);
+  doc.line(nx, ny + 7, nx, ny - 7);
+  doc.triangle(nx - 2.5, ny - 2, nx + 2.5, ny - 2, nx, ny - 8, 'F');
   doc.setFontSize(6);
-  doc.setTextColor(60, 60, 60);
-  doc.text('N', nx, ny - 9, { align: 'center' });
+  doc.setTextColor(40, 40, 40);
+  doc.text('N', nx, ny - 10, { align: 'center' });
 
-  // --- Scale bar ---
-  const scaleY = mapY + mapH - 6;
-  const scaleX = mapX + 6;
-  const degPerMm = (maxLng - minLng) / mapW;
-  const mPerMm = degPerMm * 111320;
-  const barMm = 20;
-  const barM = Math.round(mPerMm * barMm / 10) * 10;
-  doc.setDrawColor(60, 60, 60);
-  doc.setLineWidth(0.4);
-  doc.line(scaleX, scaleY, scaleX + barMm, scaleY);
-  doc.line(scaleX, scaleY - 1.5, scaleX, scaleY + 1.5);
-  doc.line(scaleX + barMm, scaleY - 1.5, scaleX + barMm, scaleY + 1.5);
+  // ---- Scale bar ----
+  const scaleY = mapY + mapH - 7;
+  const scaleX = mapX + 8;
+  const degPerPt = (maxLng - minLng) / mapW;
+  const mPerPt = degPerPt * 111320;
+  const barPt = 40; // target ~40pt bar
+  const barM = Math.round(mPerPt * barPt / 10) * 10;
+  doc.setDrawColor(40, 40, 40);
+  doc.setLineWidth(0.5);
+  doc.line(scaleX, scaleY, scaleX + barPt, scaleY);
+  doc.line(scaleX, scaleY - 2, scaleX, scaleY + 2);
+  doc.line(scaleX + barPt, scaleY - 2, scaleX + barPt, scaleY + 2);
   doc.setFontSize(6);
-  doc.setTextColor(60, 60, 60);
-  doc.text(`0`, scaleX, scaleY + 4, { align: 'center' });
-  doc.text(`${barM}m`, scaleX + barMm, scaleY + 4, { align: 'center' });
+  doc.setTextColor(40, 40, 40);
+  doc.text('0', scaleX, scaleY + 5, { align: 'center' });
+  doc.text(`${barM}m`, scaleX + barPt, scaleY + 5, { align: 'center' });
 
-  // --- Side panel ---
-  const sx = pageW - sideW - 2;
-  const sy = mapY;
-  const sw = sideW;
-  const sh = mapH;
+  // ====================================================================
+  // RIGHT-HAND BANNER — light paper background, matching reference PDF
+  // ====================================================================
+  doc.setFillColor(248, 247, 243);
+  doc.rect(bx, by, bw, bh, 'F');
 
-  doc.setFillColor(22, 36, 28);
-  doc.rect(sx, sy, sw, sh, 'F');
-  doc.setDrawColor(42, 59, 48);
-  doc.setLineWidth(0.3);
-  doc.rect(sx, sy, sw, sh, 'S');
+  // Left border of banner (vertical divider from map)
+  doc.setDrawColor(20, 20, 20);
+  doc.setLineWidth(0.6);
+  doc.line(bx, by, bx, by + bh);
 
-  // Logo placeholder
-  doc.setFillColor(30, 50, 38);
-  doc.rect(sx + 4, sy + 4, sw - 8, 18, 'F');
-  doc.setFontSize(11);
-  doc.setTextColor(255, 106, 26);
-  doc.setFont('helvetica', 'bold');
-  doc.text('DigClear', sx + sw / 2, sy + 14, { align: 'center' });
-  doc.setFontSize(6);
-  doc.setTextColor(138, 147, 140);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Underground Utility Clearance', sx + sw / 2, sy + 19, { align: 'center' });
+  const labelColor: [number, number, number] = [110, 115, 112];
+  const valueColor: [number, number, number] = [20, 20, 20];
+  const divColor:   [number, number, number] = [200, 200, 195];
 
-  // Divider
-  doc.setDrawColor(42, 59, 48);
-  doc.setLineWidth(0.3);
-  doc.line(sx + 4, sy + 25, sx + sw - 4, sy + 25);
+  let cy2 = by + 12;
 
-  // Drawing info
-  let infoY = sy + 32;
-  const labelColor: [number, number, number] = [138, 147, 140];
-  const valueColor: [number, number, number] = [242, 239, 230];
-
-  function infoRow(label: string, value: string) {
-    doc.setFontSize(6);
+  function bannerField(label: string, value: string) {
+    // grey label
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
     doc.setTextColor(...labelColor);
-    doc.text(label.toUpperCase(), sx + 4, infoY);
-    infoY += 4;
+    doc.text(label.toUpperCase(), bx + 8, cy2);
+    cy2 += 5;
+    // bold value
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...valueColor);
+    doc.text(value, bx + 8, cy2, { maxWidth: bw - 12 });
+    cy2 += 5;
+    // divider
+    doc.setDrawColor(...divColor);
+    doc.setLineWidth(0.3);
+    doc.line(bx + 4, cy2, bx + bw - 4, cy2);
+    cy2 += 8;
+  }
+
+  // Contractor company: derive from email (part before @)
+  const company = data.contractorEmail.split('@')[0].toUpperCase();
+
+  const areaSqm = (() => {
+    const coords = data.zoneGeoJSON ? collectPolygonCoords(data.zoneGeoJSON) : [];
+    if (coords.length < 3) return 0;
+    const R = 111320;
+    const lat0 = (coords[0][1] * Math.PI) / 180;
+    const pts2 = coords.map(([lng, lat]) => [lng * R * Math.cos(lat0), lat * R]);
+    let sum = 0;
+    for (let i = 0; i < pts2.length; i++) {
+      const [x1, y1] = pts2[i], [x2, y2] = pts2[(i + 1) % pts2.length];
+      sum += x1 * y2 - x2 * y1;
+    }
+    return Math.round(Math.abs(sum / 2));
+  })();
+
+  bannerField('Reference', data.reference);
+  bannerField('Status', data.conflicts.length === 0 ? 'CLEAR' : 'AFFECTED');
+  bannerField('Submitted by', company);
+  bannerField('Date', new Date().toLocaleDateString('en-SG', { day: '2-digit', month: 'short', year: 'numeric' }));
+  bannerField('Area (approx.)', `${areaSqm.toLocaleString()} m²`);
+  bannerField('Paid via', 'FOMO Pay');
+
+  // ---- Legend ----
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(...labelColor);
+  doc.text('LEGEND', bx + 8, cy2);
+  cy2 += 6;
+
+  // Working zone swatch
+  doc.setFillColor(58, 125, 92);
+  doc.rect(bx + 8, cy2 - 4, 10, 6, 'F');
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...valueColor);
+  doc.text('Working zone', bx + 22, cy2);
+  cy2 += 9;
+
+  // Affected utility line swatch (only if there are conflicts)
+  if (data.conflicts.length > 0) {
+    // Use the first conflict's color
+    const firstType = data.conflicts[0].utilityType;
+    const [sr, sg, sb] = hexToRgb(UTILITY_COLORS[firstType] || '#9E9E9E');
+    doc.setFillColor(sr, sg, sb);
+    doc.rect(bx + 8, cy2 - 4, 10, 6, 'F');
     doc.setFontSize(8);
     doc.setTextColor(...valueColor);
-    doc.setFont('helvetica', 'bold');
-    doc.text(value, sx + 4, infoY, { maxWidth: sw - 8 });
+    doc.text('Affected utility line', bx + 22, cy2);
+    cy2 += 9;
+  }
+
+  // ---- Affected lines list ----
+  if (data.conflicts.length > 0) {
+    cy2 += 4;
+    doc.setDrawColor(...divColor);
+    doc.setLineWidth(0.3);
+    doc.line(bx + 4, cy2, bx + bw - 4, cy2);
+    cy2 += 7;
+
     doc.setFont('helvetica', 'normal');
-    infoY += 7;
-  }
-
-  infoRow('Reference', data.reference);
-  infoRow('Date', new Date().toLocaleDateString('en-SG', { day: '2-digit', month: 'short', year: 'numeric' }));
-  infoRow('Contractor', data.contractorEmail);
-  infoRow('Affected Lines', String(data.conflicts.length));
-  infoRow('Drawing Scale', '1:NTS');
-  infoRow('CRS', 'WGS84 / EPSG:4326');
-
-  // Divider
-  infoY += 2;
-  doc.setDrawColor(42, 59, 48);
-  doc.line(sx + 4, infoY, sx + sw - 4, infoY);
-  infoY += 6;
-
-  // Legend
-  doc.setFontSize(7);
-  doc.setTextColor(...labelColor);
-  doc.text('LEGEND', sx + 4, infoY);
-  infoY += 5;
-
-  // Work zone legend entry
-  doc.setFillColor(95, 190, 142);
-  doc.rect(sx + 4, infoY - 3, 8, 3, 'F');
-  doc.setFontSize(6.5);
-  doc.setTextColor(...valueColor);
-  doc.text('Work Zone', sx + 15, infoY, {});
-  infoY += 6;
-
-  // Utility type entries — only show types present in conflicts
-  const presentTypes = [...new Set(data.conflicts.map((c) => c.utilityType))];
-  for (const type of presentTypes) {
-    const color = UTILITY_COLORS[type] || '#9E9E9E';
-    const [r, g, b] = hexToRgb(color);
-    doc.setFillColor(r, g, b);
-    doc.rect(sx + 4, infoY - 3, 8, 3, 'F');
     doc.setFontSize(6.5);
-    doc.setTextColor(...valueColor);
-    doc.text(UTILITY_LABELS[type] || type, sx + 15, infoY);
-    infoY += 6;
+    doc.setTextColor(...labelColor);
+    doc.text('AFFECTED LINES', bx + 8, cy2);
+    cy2 += 7;
+
+    const MAX_LISTED = 10;
+    const maxY = by + bh - 28;
+    const toList = data.conflicts.slice(0, MAX_LISTED);
+    for (const c of toList) {
+      if (cy2 > maxY) break;
+      const typeLabel = UTILITY_LABELS[c.utilityType] || c.utilityType;
+      const shortId = c.infraLineId ? c.infraLineId.slice(0, 8) : '';
+      const line = `${typeLabel} (infra_${shortId})`;
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...valueColor);
+      const wrapped = doc.splitTextToSize(line, bw - 16);
+      doc.text(wrapped, bx + 8, cy2);
+      cy2 += wrapped.length * 9 + 1;
+    }
+    if (data.conflicts.length > MAX_LISTED) {
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(...labelColor);
+      doc.text(`+ ${data.conflicts.length - MAX_LISTED} more`, bx + 8, cy2);
+    }
   }
 
-  // Divider
-  infoY += 2;
-  doc.setDrawColor(42, 59, 48);
-  doc.line(sx + 4, infoY, sx + sw - 4, infoY);
-  infoY += 6;
-
-  // Warning note
-  doc.setFontSize(5.5);
+  // ---- Footer note pinned to bottom of banner ----
+  const footY = by + bh - 16;
+  doc.setDrawColor(...divColor);
+  doc.setLineWidth(0.3);
+  doc.line(bx + 4, footY - 6, bx + bw - 4, footY - 6);
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(6);
   doc.setTextColor(...labelColor);
-  const warning = 'This drawing is for utility clearance reference only. Depths are not indicated. Verify on site before excavation.';
-  const lines = doc.splitTextToSize(warning, sw - 8);
-  doc.text(lines, sx + 4, infoY);
-
-  // Bottom stamp
-  const stampY = sy + sh - 8;
-  doc.setDrawColor(42, 59, 48);
-  doc.line(sx + 4, stampY - 4, sx + sw - 4, stampY - 4);
-  doc.setFontSize(5.5);
-  doc.setTextColor(...labelColor);
-  doc.text('CONFIDENTIAL — Not for redistribution', sx + sw / 2, stampY, { align: 'center' });
+  doc.text(
+    doc.splitTextToSize('Do not excavate without reviewing this drawing in full.', bw - 16),
+    bx + 8,
+    footY
+  );
 
   doc.save(`DigClear-${data.reference}.pdf`);
 }
