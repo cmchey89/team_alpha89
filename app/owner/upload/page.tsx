@@ -61,17 +61,6 @@ export default function OwnerUploadPage() {
   const [loadingMap, setLoadingMap] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
 
-  useEffect(() => {
-    fetch('/api/auth/me').then(r => {
-      if (r.status === 401) { router.replace('/login'); return null; }
-      return r.json();
-    }).then(d => {
-      if (d) setAuthChecked(true);
-    }).catch(() => { router.replace('/login'); });
-  }, [router]);
-
-  if (!authChecked) return null;
-
   async function fetchLines() {
     setLoadingMap(true);
     try {
@@ -85,7 +74,16 @@ export default function OwnerUploadPage() {
     }
   }
 
-  useEffect(() => { fetchLines(); }, []);
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => {
+      if (r.status === 401) { router.replace('/login'); return null; }
+      return r.json();
+    }).then(d => {
+      if (d) { setAuthChecked(true); fetchLines(); }
+    }).catch(() => { router.replace('/login'); });
+  }, [router]);
+
+  if (!authChecked) return null;
 
   async function handleFile(file: File) {
     setError(null);
