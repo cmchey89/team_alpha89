@@ -109,7 +109,7 @@ export async function generateDrawingPdf(data: DrawingData) {
 
   // Layout constants
   const MARGIN    = 14;
-  const BANNER_W  = 160;
+  const BANNER_W  = 120;
   const TITLE_H   = 48;
   const INNER_PAD = 5;
 
@@ -274,22 +274,24 @@ export async function generateDrawingPdf(data: DrawingData) {
   const valueColor: [number, number, number] = [20, 20, 20];
   const divColor:   [number, number, number] = [210, 210, 208];
 
-  const CELL_H = 36; // fixed cell height for each banner field
+  // Each cell has a fixed height; label + value are vertically centered inside it.
+  // Label is 6.5pt (~8pt line), value is 10pt (~13pt line), total block ~21pt.
+  const CELL_H = 36;
+  const BLOCK_H = 21; // label line + gap + value line
   let cy2 = by;
 
   function bannerField(label: string, value: string) {
-    const cellTop = cy2;
-    const cellMid = cellTop + CELL_H / 2;
-    // Grey label — slightly above center
+    const blockTop = cy2 + (CELL_H - BLOCK_H) / 2;
+    // Grey label
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.setTextColor(...labelColor);
-    doc.text(label.toUpperCase(), bx + bw / 2, cellMid - 6, { align: 'center' });
-    // Bold value — slightly below center
+    doc.text(label.toUpperCase(), bx + 8, blockTop + 7);
+    // Bold value
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.setTextColor(...valueColor);
-    doc.text(value, bx + bw / 2, cellMid + 6, { align: 'center', maxWidth: bw - 12 });
+    doc.text(value, bx + 8, blockTop + 18, { maxWidth: bw - 12 });
     // Bottom divider
     cy2 += CELL_H;
     doc.setDrawColor(...divColor);
@@ -309,27 +311,26 @@ export async function generateDrawingPdf(data: DrawingData) {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.5);
   doc.setTextColor(...labelColor);
-  doc.text('LEGEND', bx + bw / 2, cy2 + 8, { align: 'center' });
+  doc.text('LEGEND', bx + 8, cy2 + 8);
   cy2 += 14;
 
-  // Working zone row — swatch left-of-center, label right-of-swatch
-  const swatchW = 12, swatchH = 7, swatchX = bx + bw / 2 - 30;
+  const swatchW = 10, swatchH = 6;
   doc.setFillColor(58, 125, 92);
-  doc.rect(swatchX, cy2 - 5, swatchW, swatchH, 'F');
-  doc.setFontSize(8);
+  doc.rect(bx + 8, cy2 - 5, swatchW, swatchH, 'F');
+  doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...valueColor);
-  doc.text('Working zone', swatchX + swatchW + 4, cy2);
-  cy2 += 12;
+  doc.text('Working zone', bx + 8 + swatchW + 4, cy2);
+  cy2 += 11;
 
   if (data.conflicts.length > 0) {
     const [sr, sg, sb] = hexToRgb(UTILITY_COLORS[data.conflicts[0].utilityType] || '#9E9E9E');
     doc.setFillColor(sr, sg, sb);
-    doc.rect(swatchX, cy2 - 5, swatchW, swatchH, 'F');
-    doc.setFontSize(8);
+    doc.rect(bx + 8, cy2 - 5, swatchW, swatchH, 'F');
+    doc.setFontSize(7);
     doc.setTextColor(...valueColor);
-    doc.text('Affected utility line', swatchX + swatchW + 4, cy2);
-    cy2 += 12;
+    doc.text('Affected utility line', bx + 8 + swatchW + 4, cy2);
+    cy2 += 11;
   }
 
   // ---- Notes section ----
@@ -342,16 +343,16 @@ export async function generateDrawingPdf(data: DrawingData) {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(6.5);
   doc.setTextColor(...labelColor);
-  doc.text('NOTES', bx + bw / 2, cy2, { align: 'center' });
+  doc.text('NOTES', bx + 8, cy2);
   cy2 += 8;
 
   for (const note of NOTES) {
-    const wrapped = doc.splitTextToSize(note, bw - 12);
+    const wrapped = doc.splitTextToSize(note, bw - 14);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
+    doc.setFontSize(6);
     doc.setTextColor(...valueColor);
-    doc.text(wrapped, bx + bw / 2, cy2, { align: 'center' });
-    cy2 += wrapped.length * 8 + 4;
+    doc.text(wrapped, bx + 8, cy2);
+    cy2 += wrapped.length * 7.5 + 3;
   }
 
   doc.save(`DigClear-${data.reference}.pdf`);
