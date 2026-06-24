@@ -14,8 +14,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
-import { workZones, workZoneConflicts, users } from '@/lib/db/schema';
-import { findConflicts, insertWorkZone } from '@/lib/db/spatial';
+import { users } from '@/lib/db/schema';
+import { checkAndInsertWorkZone } from '@/lib/db/spatial';
 import { requireUser } from '@/lib/auth/session';
 
 const CheckBody = z.object({
@@ -53,7 +53,10 @@ export async function POST(req: NextRequest) {
   }
 
   const reference = generateReference();
-  const zoneId = await insertWorkZone({
+
+  // Single atomic SQL statement: inserts the zone, finds conflicts, updates
+  // status, and records conflict rows — no partial writes if the process dies.
+  const { zoneId, conflicts } = await checkAndInsertWorkZone({
     contractorId: contractor.id,
     ownerId,
     reference,
@@ -61,30 +64,10 @@ export async function POST(req: NextRequest) {
     areaSqm: Math.round(areaSqm),
   });
 
-  const conflicts = await findConflicts(ownerId, geometry);
-  const cleared = conflicts.length === 0;
-
-  await db
-    .update(workZones)
-    .set({
-      status: cleared ? 'clear' : 'affected_unpaid',
-      checkedAt: new Date(),
-    })
-    .where(eq(workZones.id, zoneId));
-
-  if (!cleared) {
-    // Persist which lines conflicted now, at check time, so the result is
-    // stable even if the owner edits their baseline later. The contractor
-    // does NOT get this list back in this response — only the count.
-    for (const c of conflicts) {
-      await db.insert(workZoneConflicts).values({ workZoneId: zoneId, infraLineId: c.infraLineId });
-    }
-  }
-
   return NextResponse.json({
     zoneId,
     reference,
-    cleared,
+    cleared: conflicts.length === 0,
     conflictCount: conflicts.length,
     // Deliberately omitted: conflicts[].infraLineId / label / geometry.
     // That detail is only returned by the post-payment release endpoint.

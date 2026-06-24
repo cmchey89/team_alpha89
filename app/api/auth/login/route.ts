@@ -9,6 +9,7 @@ import { db } from '@/lib/db/client';
 import { users } from '@/lib/db/schema';
 import { verifyPassword } from '@/lib/auth/password';
 import { createSessionToken, getSessionCookieName } from '@/lib/auth/session';
+import { checkRateLimit, clientIp } from '@/lib/auth/rateLimit';
 
 const LoginBody = z.object({
   email: z.string().email(),
@@ -16,6 +17,11 @@ const LoginBody = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  // 10 attempts per IP per 15 minutes
+  if (!checkRateLimit(`login:${clientIp(req)}`, 10, 15 * 60 * 1000)) {
+    return NextResponse.json({ error: 'Too many login attempts. Please try again later.' }, { status: 429 });
+  }
+
   const json = await req.json().catch(() => null);
   const parsed = LoginBody.safeParse(json);
   if (!parsed.success) {
@@ -47,7 +53,7 @@ export async function POST(req: NextRequest) {
   res.cookies.set(getSessionCookieName(), token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'strict',
     path: '/',
     maxAge: 60 * 60 * 24 * 7,
   });

@@ -18,6 +18,9 @@ const MapFreezer   = dynamic(() => import('@/components/MapFreezer'), { ssr: fal
 
 const TAI_SENG_CENTER: LatLngTuple = [1.3358, 103.8879];
 const OWNER_ID = process.env.NEXT_PUBLIC_OWNER_ID ?? 'afc4cd7e-153c-47d3-a428-356058108f04';
+if (!process.env.NEXT_PUBLIC_OWNER_ID) {
+  console.warn('[DigClear] NEXT_PUBLIC_OWNER_ID is not set — using hardcoded fallback UUID. Add it to Vercel environment variables.');
+}
 
 type Phase = 'idle' | 'drawing' | 'review' | 'checking' | 'clear' | 'affected_unpaid' | 'affected_paid';
 

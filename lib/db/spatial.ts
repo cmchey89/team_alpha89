@@ -97,8 +97,79 @@ export async function insertInfraLines(rows: {
 }
 
 /**
- * Inserts a contractor's submitted work zone polygon.
+ * Atomically inserts a work zone, finds conflicts, updates the zone status,
+ * and records conflict rows — all in a single SQL statement so no intermediate
+ * state is visible to concurrent requests and no partial writes are possible.
+ *
+ * Replaces the three-step insertWorkZone → findConflicts → UPDATE pattern
+ * which could leave a zone stuck in 'checking' if the process died between steps.
  */
+export async function checkAndInsertWorkZone(params: {
+  contractorId: string;
+  ownerId: string;
+  reference: string;
+  geometry: Polygon;
+  areaSqm: number;
+}): Promise<{ zoneId: string; conflicts: ConflictResult[] }> {
+  const geomJson = JSON.stringify(params.geometry);
+  const sql = rawSql();
+
+  const rows = await sql`
+    WITH
+      zone_geom AS (
+        SELECT ST_SetSRID(ST_GeomFromGeoJSON(${geomJson}), 4326) AS geom
+      ),
+      new_zone AS (
+        INSERT INTO work_zones (contractor_id, owner_id, reference, geom, area_sqm, status)
+        SELECT
+          ${params.contractorId}::uuid,
+          ${params.ownerId}::uuid,
+          ${params.reference},
+          zone_geom.geom,
+          ${params.areaSqm},
+          'checking'
+        FROM zone_geom
+        RETURNING id
+      ),
+      conflicts AS (
+        SELECT il.id AS "infraLineId", il.utility_type AS "utilityType", il.label
+        FROM infra_lines il
+        CROSS JOIN zone_geom
+        WHERE il.owner_id = ${params.ownerId}::uuid
+          AND ST_Intersects(il.geom, zone_geom.geom)
+      ),
+      zone_update AS (
+        UPDATE work_zones
+        SET
+          status     = CASE WHEN EXISTS(SELECT 1 FROM conflicts) THEN 'affected_unpaid' ELSE 'clear' END,
+          checked_at = NOW()
+        FROM new_zone
+        WHERE work_zones.id = new_zone.id
+      ),
+      conflict_insert AS (
+        INSERT INTO work_zone_conflicts (work_zone_id, infra_line_id)
+        SELECT new_zone.id, c."infraLineId"
+        FROM new_zone
+        CROSS JOIN conflicts c
+      )
+    SELECT
+      new_zone.id AS "zoneId",
+      COALESCE(
+        json_agg(
+          json_build_object('infraLineId', c."infraLineId", 'utilityType', c."utilityType", 'label', c.label)
+        ) FILTER (WHERE c."infraLineId" IS NOT NULL),
+        '[]'::json
+      ) AS conflicts
+    FROM new_zone
+    LEFT JOIN conflicts c ON true
+    GROUP BY new_zone.id
+  `;
+
+  const row = rows[0] as { zoneId: string; conflicts: ConflictResult[] };
+  return { zoneId: row.zoneId, conflicts: row.conflicts ?? [] };
+}
+
+/** @deprecated Use checkAndInsertWorkZone instead */
 export async function insertWorkZone(params: {
   contractorId: string;
   ownerId: string;

@@ -99,9 +99,9 @@ export async function POST(req: NextRequest) {
       .set({ status: 'failed', errorMessage: err instanceof Error ? err.message : String(err) })
       .where(eq(gisUploads.id, uploadId));
 
-    console.error('infra/upload error:', err);
+    console.error('infra/upload error:', err instanceof Error ? err.message : String(err));
     return NextResponse.json(
-      { error: 'Failed to save infrastructure lines.', details: String(err) },
+      { error: 'Failed to save infrastructure lines.' },
       { status: 500 }
     );
   }
