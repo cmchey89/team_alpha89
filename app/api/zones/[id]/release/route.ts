@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 
   if (zone.status !== 'affected_paid') {
-    if (process.env.BYPASS_PAYMENT === 'true') {
+    if (process.env.BYPASS_PAYMENT === 'true' && process.env.NODE_ENV !== 'production') {
       await db.update(workZones).set({ status: 'affected_paid', paid: true }).where(eq(workZones.id, zone.id));
     } else {
       return NextResponse.json(

@@ -1,7 +1,7 @@
 // app/contractor/draw/page.tsx
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import 'leaflet/dist/leaflet.css';
@@ -17,7 +17,7 @@ const MapSearch    = dynamic(() => import('@/components/MapSearch'), { ssr: fals
 const MapFreezer   = dynamic(() => import('@/components/MapFreezer'), { ssr: false });
 
 const TAI_SENG_CENTER: LatLngTuple = [1.3358, 103.8879];
-const OWNER_ID = 'afc4cd7e-153c-47d3-a428-356058108f04';
+const OWNER_ID = process.env.NEXT_PUBLIC_OWNER_ID ?? 'afc4cd7e-153c-47d3-a428-356058108f04';
 
 type Phase = 'idle' | 'drawing' | 'review' | 'checking' | 'clear' | 'affected_unpaid' | 'affected_paid';
 
@@ -26,6 +26,18 @@ interface CheckResult {
   reference: string;
   cleared: boolean;
   conflictCount: number;
+}
+
+interface Conflict {
+  infraLineId: string;
+  utilityType: string;
+  label: string | null;
+  geometry: { type: string; coordinates: unknown };
+}
+
+interface ReleaseData {
+  conflicts: Conflict[];
+  zoneGeoJSON: { type: string; coordinates: unknown } | null;
 }
 
 function shoelaceAreaSqm(points: LatLngTuple[]): number {
@@ -98,7 +110,7 @@ export default function ContractorDrawPage() {
   const [phase, setPhase] = useState<Phase>('idle');
   const [points, setPoints] = useState<LatLngTuple[]>([]);
   const [result, setResult] = useState<CheckResult | null>(null);
-  const [releaseData, setReleaseData] = useState<any>(null);
+  const [releaseData, setReleaseData] = useState<ReleaseData | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [mapView, setMapView] = useState<MapView | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -108,13 +120,17 @@ export default function ContractorDrawPage() {
 
   // Auth guard — redirect to login if no valid session
   useEffect(() => {
-    fetch('/api/auth/me').then(r => {
-      if (r.status === 401) { router.replace('/login'); return null; }
-      return r.json();
-    }).then(d => {
-      if (d?.email) setUserEmail(d.email);
-      setAuthChecked(true);
-    }).catch(() => { router.replace('/login'); });
+    (async () => {
+      try {
+        const r = await fetch('/api/auth/me');
+        if (r.status === 401) { router.replace('/login'); return; }
+        const d = await r.json();
+        if (d?.email) setUserEmail(d.email);
+        setAuthChecked(true);
+      } catch {
+        router.replace('/login');
+      }
+    })();
   }, [router]);
 
   const handlePointAdded = useCallback((p: LatLngTuple) => {
@@ -199,8 +215,6 @@ export default function ContractorDrawPage() {
     setError(null);
     setPhase('idle');
   }
-
-  const area = shoelaceAreaSqm(points);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
@@ -422,6 +436,7 @@ export default function ContractorDrawPage() {
                     disabled={generatingPdf}
                     onClick={async () => {
                       setGeneratingPdf(true);
+                      setError(null);
                       try {
                         await generateDrawingPdf({
                           reference: result.reference,
@@ -430,6 +445,8 @@ export default function ContractorDrawPage() {
                           contractorEmail: userEmail,
                           mapView: mapView ?? undefined,
                         });
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : 'PDF generation failed.');
                       } finally {
                         setGeneratingPdf(false);
                       }

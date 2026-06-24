@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { useMapEvents, useMap } from 'react-leaflet';
 import type { LatLngTuple } from 'leaflet';
 import L from 'leaflet';
@@ -18,10 +18,10 @@ export default function ZoneDrawer({
   active, points, onPointAdded, onPointMoved, onPointDeleted, onDoubleClickFinish,
 }: ZoneDrawerProps) {
   const map = useMap();
-  const markerLayerRef = useRef<L.LayerGroup | null>(null);
+  const markerLayerRef  = useRef<L.LayerGroup | null>(null);
   const polygonLayerRef = useRef<L.Polygon | null>(null);
-  const [pixelPoints, setPixelPoints] = useState<{ x: number; y: number }[]>([]);
-  const [mapSize, setMapSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
+  // Pending single-click timer — cancelled by dblclick to prevent spurious points
+  const pendingClickRef = useRef<{ timer: ReturnType<typeof setTimeout>; latlng: L.LatLng } | null>(null);
 
   // Set crosshair cursor when active
   useEffect(() => {
@@ -30,24 +30,42 @@ export default function ZoneDrawer({
     return () => { map.getContainer().style.cursor = ''; };
   }, [map, active]);
 
-  // Recompute pixel points for the SVG mask overlay
-  useEffect(() => {
-    if (!map || !active) { setPixelPoints([]); return; }
+  // Pixel coords for SVG mask — derived synchronously, no extra render cycle
+  const { pixelPoints, mapSize } = useMemo(() => {
+    if (!map || !active || points.length === 0) {
+      return { pixelPoints: [] as { x: number; y: number }[], mapSize: { w: 0, h: 0 } };
+    }
     const size = map.getSize();
-    setMapSize({ w: size.x, h: size.y });
-    setPixelPoints(points.map((pt) => {
-      const p = map.latLngToContainerPoint([pt[0], pt[1]]);
-      return { x: p.x, y: p.y };
-    }));
+    return {
+      mapSize: { w: size.x, h: size.y },
+      pixelPoints: points.map((pt) => {
+        const p = map.latLngToContainerPoint([pt[0], pt[1]]);
+        return { x: p.x, y: p.y };
+      }),
+    };
   }, [map, active, points]);
 
+  // Debounce single click vs double-click:
+  // Leaflet fires click+click before dblclick, so we delay point placement
+  // by 250 ms and cancel if dblclick arrives first.
   useMapEvents({
     click(e) {
       if (!active) return;
-      onPointAdded([e.latlng.lat, e.latlng.lng]);
+      if (pendingClickRef.current) clearTimeout(pendingClickRef.current.timer);
+      pendingClickRef.current = {
+        latlng: e.latlng,
+        timer: setTimeout(() => {
+          pendingClickRef.current = null;
+          onPointAdded([e.latlng.lat, e.latlng.lng]);
+        }, 250),
+      };
     },
     dblclick() {
       if (!active) return;
+      if (pendingClickRef.current) {
+        clearTimeout(pendingClickRef.current.timer);
+        pendingClickRef.current = null;
+      }
       if (points.length >= 3) onDoubleClickFinish();
     },
   });
@@ -63,7 +81,9 @@ export default function ZoneDrawer({
         dashArray: active ? '6,5' : undefined,
       }).addTo(map);
     }
-    return () => { if (polygonLayerRef.current) { map.removeLayer(polygonLayerRef.current); polygonLayerRef.current = null; } };
+    return () => {
+      if (polygonLayerRef.current) { map.removeLayer(polygonLayerRef.current); polygonLayerRef.current = null; }
+    };
   }, [map, points, active]);
 
   // Draggable + right-click-deletable vertex markers
@@ -81,7 +101,6 @@ export default function ZoneDrawer({
       });
       marker.addTo(group);
 
-      // Left-drag to move
       marker.on('mousedown', (downEvt: L.LeafletMouseEvent) => {
         L.DomEvent.stopPropagation(downEvt);
         const onMove = (e: L.LeafletMouseEvent) => { marker.setLatLng(e.latlng); };
@@ -92,7 +111,6 @@ export default function ZoneDrawer({
         map.on('mousemove', onMove); map.on('mouseup', onUp);
       });
 
-      // Right-click to delete this vertex
       marker.on('contextmenu', (e: L.LeafletMouseEvent) => {
         L.DomEvent.stopPropagation(e);
         onPointDeleted(i);
@@ -103,7 +121,11 @@ export default function ZoneDrawer({
     });
 
     return () => {
-      if (markerLayerRef.current) { markerLayerRef.current.clearLayers(); map.removeLayer(markerLayerRef.current); markerLayerRef.current = null; }
+      if (markerLayerRef.current) {
+        markerLayerRef.current.clearLayers();
+        map.removeLayer(markerLayerRef.current);
+        markerLayerRef.current = null;
+      }
     };
   }, [map, active, points, onPointMoved, onPointDeleted]);
 

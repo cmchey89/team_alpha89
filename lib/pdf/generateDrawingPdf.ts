@@ -150,13 +150,8 @@ function downloadBlob(doc: jsPDF, filename: string) {
 // ============================================================
 // Main export
 // ============================================================
-export async function generateDrawingPdf(data: DrawingData) {
-  try {
-    await _generate(data);
-  } catch (err) {
-    console.error('[PDF]', err);
-    alert('PDF generation failed:\n' + (err instanceof Error ? err.message : String(err)));
-  }
+export async function generateDrawingPdf(data: DrawingData): Promise<void> {
+  await _generate(data);
 }
 
 async function _generate(data: DrawingData) {
@@ -191,8 +186,7 @@ async function _generate(data: DrawingData) {
   for (const c of data.conflicts) allCoords.push(...collectLine(c.geometry));
 
   if (allCoords.length === 0) {
-    alert('No geometry found — cannot generate drawing.');
-    return;
+    throw new Error('No geometry found — cannot generate drawing.');
   }
 
   // ---- Build padded bounding box ----

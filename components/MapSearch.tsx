@@ -38,6 +38,7 @@ export default function MapSearch({ disabled }: { disabled?: boolean }) {
   }
 
   function select(r: Result) {
+    if (disabled) return;
     map.flyTo([parseFloat(r.lat), parseFloat(r.lon)], 18, { duration: 1.2 });
     setQuery(r.display_name.split(',').slice(0, 2).join(','));
     setResults([]);

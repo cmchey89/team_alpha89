@@ -34,15 +34,16 @@ interface InfraLine {
   id: string;
   utilityType: string;
   label: string | null;
-  geometry: { type: string; coordinates: any };
+  geometry: { type: string; coordinates: unknown };
 }
 
-function geomToLatLngs(geometry: { type: string; coordinates: any }): [number, number][][] {
+function geomToLatLngs(geometry: { type: string; coordinates: unknown }): [number, number][][] {
+  const coords = geometry.coordinates as number[][];
   if (geometry.type === 'LineString') {
-    return [geometry.coordinates.map(([lng, lat]: number[]) => [lat, lng] as [number, number])];
+    return [(coords as number[][]).map(([lng, lat]) => [lat, lng] as [number, number])];
   }
   if (geometry.type === 'MultiLineString') {
-    return geometry.coordinates.map((line: number[][]) =>
+    return (coords as number[][][]).map((line) =>
       line.map(([lng, lat]) => [lat, lng] as [number, number])
     );
   }
@@ -51,15 +52,15 @@ function geomToLatLngs(geometry: { type: string; coordinates: any }): [number, n
 
 export default function OwnerUploadPage() {
   const router = useRouter();
-  const [parsing, setParsing]       = useState(false);
-  const [error, setError]           = useState<string | null>(null);
-  const [parsed, setParsed]         = useState<ParsedGisResult | null>(null);
-  const [featureCount, setFeatureCount] = useState(0);
-  const [layerTypes, setLayerTypes] = useState<Record<string, UtilityType>>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [lines, setLines]           = useState<InfraLine[]>([]);
-  const [loadingMap, setLoadingMap] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
+  const [parsing, setParsing]           = useState(false);
+  const [error, setError]               = useState<string | null>(null);
+  const [parsed, setParsed]             = useState<ParsedGisResult | null>(null);
+  const [layerTypes, setLayerTypes]     = useState<Record<string, UtilityType>>({});
+  const [submitting, setSubmitting]     = useState(false);
+  const [lines, setLines]               = useState<InfraLine[]>([]);
+  const [loadingMap, setLoadingMap]     = useState(false);
+  const [authChecked, setAuthChecked]   = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   async function fetchLines() {
     setLoadingMap(true);
@@ -75,12 +76,17 @@ export default function OwnerUploadPage() {
   }
 
   useEffect(() => {
-    fetch('/api/auth/me').then(r => {
-      if (r.status === 401) { router.replace('/login'); return null; }
-      return r.json();
-    }).then(d => {
-      if (d) { setAuthChecked(true); fetchLines(); }
-    }).catch(() => { router.replace('/login'); });
+    (async () => {
+      try {
+        const r = await fetch('/api/auth/me');
+        if (r.status === 401) { router.replace('/login'); return; }
+        await r.json();
+        setAuthChecked(true);
+        await fetchLines();
+      } catch {
+        router.replace('/login');
+      }
+    })();
   }, [router]);
 
   if (!authChecked) return null;
@@ -91,18 +97,16 @@ export default function OwnerUploadPage() {
     setParsing(true);
     try {
       const result = await parseGisFile(file);
-      const lineFeatures = flattenLineFeatures(result);
       setParsed(result);
-      setFeatureCount(lineFeatures.length);
       const defaults: Record<string, UtilityType> = {};
       for (const l of result.layers) defaults[l.name] = 'other';
       setLayerTypes(defaults);
     } catch (e) {
-      if (e instanceof UnsupportedGisFileError) {
-        setError(e.message);
-      } else {
-        setError('Could not parse this file. ' + (e instanceof Error ? e.message : String(e)));
-      }
+      setError(
+        e instanceof UnsupportedGisFileError
+          ? e.message
+          : 'Could not parse this file. ' + (e instanceof Error ? e.message : String(e))
+      );
     } finally {
       setParsing(false);
     }
@@ -118,23 +122,20 @@ export default function OwnerUploadPage() {
         sourceFormat: parsed.sourceFormat,
         features: lineFeatures.map(({ layerName, feature }) => ({
           utilityType: layerTypes[layerName] ?? 'other',
-          label: (feature.properties as any)?.name ?? layerName,
+          label: (feature.properties as Record<string, unknown>)?.name ?? layerName,
           sourceProperties: feature.properties,
           geometry: feature.geometry,
         })),
       };
-
       const res = await fetch('/api/infra/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error((body.error || `Upload failed (${res.status})`) + (body.details ? `: ${body.details}` : ''));
       }
-
       setParsed(null);
       await fetchLines();
     } catch (e) {
@@ -144,7 +145,15 @@ export default function OwnerUploadPage() {
     }
   }
 
-  // Compute map center from loaded lines
+  async function handleClearAll() {
+    await fetch('/api/infra/clear', { method: 'DELETE' });
+    setLines([]);
+    setConfirmDelete(false);
+  }
+
+  // Derive feature count from parsed state — no separate state needed
+  const featureCount = parsed ? flattenLineFeatures(parsed).length : 0;
+
   const allCoords = lines.flatMap((l) => geomToLatLngs(l.geometry).flat());
   const mapCenter: [number, number] = allCoords.length > 0
     ? [
@@ -158,8 +167,6 @@ export default function OwnerUploadPage() {
       <Navbar title="Owner — Infrastructure Baseline" />
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-
-        {/* Left panel — upload controls */}
         <aside style={{
           width: 360,
           background: 'var(--panel)',
@@ -210,14 +217,17 @@ export default function OwnerUploadPage() {
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                style={{ width: '100%', padding: 12, marginTop: 16, border: 'none', borderRadius: 4, background: submitting ? 'var(--grey)' : 'var(--orange)', color: '#1a0d04', fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer' }}
+                style={{
+                  width: '100%', padding: 12, marginTop: 16, border: 'none',
+                  borderRadius: 4, background: submitting ? 'var(--grey)' : 'var(--accent)',
+                  color: '#ffffff', fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer',
+                }}
               >
-                {submitting ? `Saving… do not click again` : `Save ${featureCount} lines to baseline`}
+                {submitting ? 'Saving… do not click again' : `Save ${featureCount} lines to baseline`}
               </button>
             </div>
           )}
 
-          {/* Legend */}
           {lines.length > 0 && (
             <div style={{ marginTop: 24 }}>
               <h3 style={{ fontSize: 13, marginBottom: 10, color: 'var(--grey)' }}>
@@ -238,20 +248,48 @@ export default function OwnerUploadPage() {
           )}
 
           {lines.length > 0 && (
-            <button
-              onClick={async () => {
-                if (!confirm(`Delete all ${lines.length} infrastructure lines? This cannot be undone.`)) return;
-                await fetch('/api/infra/clear', { method: 'DELETE' });
-                setLines([]);
-              }}
-              style={{
-                marginTop: 20, width: '100%', padding: '10px',
-                background: 'none', border: '1px solid var(--red)',
-                color: 'var(--red)', borderRadius: 4, cursor: 'pointer', fontSize: 13,
-              }}
-            >
-              Clear all infrastructure lines
-            </button>
+            confirmDelete ? (
+              <div style={{
+                marginTop: 20, padding: 12,
+                border: '1px solid var(--red)', borderRadius: 4,
+              }}>
+                <p style={{ color: 'var(--red)', fontSize: 13, margin: '0 0 10px' }}>
+                  Delete all {lines.length} lines? This cannot be undone.
+                </p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={handleClearAll}
+                    style={{
+                      flex: 1, padding: '8px 0', background: 'var(--red)',
+                      color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 13,
+                    }}
+                  >
+                    Yes, delete all
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    style={{
+                      flex: 1, padding: '8px 0', background: 'none',
+                      color: 'var(--grey)', border: '1px solid var(--line)',
+                      borderRadius: 4, cursor: 'pointer', fontSize: 13,
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                style={{
+                  marginTop: 20, width: '100%', padding: '10px',
+                  background: 'none', border: '1px solid var(--red)',
+                  color: 'var(--red)', borderRadius: 4, cursor: 'pointer', fontSize: 13,
+                }}
+              >
+                Clear all infrastructure lines
+              </button>
+            )
           )}
 
           {loadingMap && (
@@ -259,7 +297,6 @@ export default function OwnerUploadPage() {
           )}
         </aside>
 
-        {/* Right — map */}
         <div style={{ flex: 1, position: 'relative' }}>
           {lines.length === 0 && !loadingMap && (
             <div style={{
@@ -283,7 +320,7 @@ export default function OwnerUploadPage() {
                   key={`${line.id}-${i}`}
                   positions={positions}
                   pathOptions={{
-                    color: UTILITY_COLORS[line.utilityType] || '#9E9E9E',
+                    color: UTILITY_COLORS[line.utilityType] ?? '#9E9E9E',
                     weight: 3,
                     opacity: 0.85,
                   }}

@@ -38,10 +38,8 @@ export async function POST(req: NextRequest) {
   }
 
   const json = await req.json().catch(() => null);
-  console.log('zones/check received:', JSON.stringify(json));
   const parsed = CheckBody.safeParse(json);
   if (!parsed.success) {
-    console.error('zones/check validation failed:', JSON.stringify(parsed.error.flatten()));
     return NextResponse.json(
       { error: 'Invalid zone payload', details: parsed.error.flatten() },
       { status: 400 }
