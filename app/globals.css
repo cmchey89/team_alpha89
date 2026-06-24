@@ -5,20 +5,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 :root {
-  --bg: #eef2f8;
-  --paper: #ffffff;
+  --bg: #dce6f2;          /* soft blue-grey — easy on the eyes, not blinding white */
+  --paper: #e8eef7;       /* ticket panel background — muted blue-tinted off-white */
   --panel: #002B6B;
   --panel-raised: #003F99;
   --orange: #0072CE;
   --green: #1a6b3a;
   --green-bright: #27ae60;
   --affected-blue: #1565C0;
-  --grey: #7b93b0;
-  --line: #c5d5e8;
+  --grey: #5a7a9e;
+  --line: #b8cce0;
   --red: #c62828;
-  /* aliases for readability */
   --accent: #0072CE;
   --navy: #002B6B;
+  --text: #0d1f3c;        /* near-black with a blue tint for body text */
 }
 
 /* ---- Title bar ---- */
@@ -107,49 +107,52 @@
 .ticket-header { padding: 18px 20px 14px; border-bottom: 1px solid var(--line); background: var(--panel); }
 .ticket-header .eyebrow {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 1.5px;
-  color: rgba(255,255,255,0.6);
+  color: rgba(255,255,255,0.65);
   text-transform: uppercase;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 .ticket-header h2 {
   font-family: 'Big Shoulders Display', sans-serif;
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
   margin: 0;
   color: #ffffff;
 }
-.ticket-body { padding: 18px 20px; flex: 1; }
-.step-empty { color: var(--grey); font-size: 13px; line-height: 1.6; }
+.ticket-body { padding: 20px 22px; flex: 1; }
+.step-empty { color: var(--grey); font-size: 15px; line-height: 1.7; }
 .field-row {
   display: flex;
   justify-content: space-between;
-  padding: 9px 0;
+  align-items: center;
+  padding: 11px 0;
   border-bottom: 1px solid var(--line);
-  font-size: 13px;
+  font-size: 15px;
 }
-.field-row .k { color: var(--grey); }
+.field-row .k { color: var(--grey); font-size: 13px; }
 .field-row .v {
   font-family: 'JetBrains Mono', monospace;
-  color: var(--navy);
+  color: var(--text);
   text-align: right;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 /* ---- Risk banners ---- */
 .risk-banner {
   margin-top: 14px;
-  padding: 12px 14px;
-  border-radius: 4px;
-  font-size: 12.5px;
-  line-height: 1.5;
+  padding: 14px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.6;
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: flex-start;
 }
-.risk-banner.danger { background: rgba(217,83,79,0.12); border: 1px solid var(--red); color: #f3b9b6; }
-.risk-banner.safe   { background: rgba(95,190,142,0.1); border: 1px solid var(--green); color: var(--green-bright); }
-.risk-icon { font-size: 15px; flex-shrink: 0; }
+.risk-banner.danger { background: rgba(198,40,40,0.08); border: 1px solid #e57373; color: #7f0000; }
+.risk-banner.safe   { background: rgba(26,107,58,0.08); border: 1px solid var(--green); color: #1a4d2e; }
+.risk-icon { font-size: 18px; flex-shrink: 0; }
 
 /* ---- Stamp ---- */
 .stamp-wrap { position: relative; height: 0; }
@@ -161,20 +164,20 @@
   color: var(--green-bright);
   font-family: 'Big Shoulders Display', sans-serif;
   font-weight: 800;
-  font-size: 17px;
-  padding: 6px 14px;
+  font-size: 22px;
+  padding: 7px 16px;
   border-radius: 6px;
   transform: rotate(-9deg);
   letter-spacing: 1px;
   animation: stampIn 0.35s cubic-bezier(.2,1.4,.4,1) both;
-  background: rgba(58,125,92,0.08);
+  background: rgba(39,174,96,0.08);
   pointer-events: none;
 }
 .stamp.risk {
-  border-color: #d9534f;
-  color: #f3b9b6;
-  background: rgba(217,83,79,0.08);
-  border-width: 4px;
+  border-color: #c62828;
+  color: #c62828;
+  background: rgba(198,40,40,0.07);
+  border-width: 3px;
 }
 @keyframes stampIn {
   0%   { opacity: 0; transform: rotate(-9deg) scale(2.2); }
@@ -190,7 +193,7 @@
   padding-top: 14px;
   border-top: 1px dashed var(--line);
 }
-.price-line .label { font-size: 12px; color: var(--grey); }
+.price-line .label { font-size: 14px; color: var(--grey); }
 .price-line .amount {
   font-family: 'JetBrains Mono', monospace;
   font-size: 22px;
@@ -201,12 +204,12 @@
 /* ---- Buttons in ticket ---- */
 .btn {
   width: 100%;
-  padding: 13px;
-  border-radius: 4px;
+  padding: 14px;
+  border-radius: 6px;
   border: none;
   font-family: 'Inter', sans-serif;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 16px;
   cursor: pointer;
   margin-top: 14px;
   transition: opacity 0.15s;
@@ -347,8 +350,9 @@ html,
 body {
   margin: 0;
   background: var(--bg);
-  color: var(--paper);
+  color: var(--text);
   font-family: 'Inter', system-ui, sans-serif;
+  font-size: 15px;
 }
 
 .contractor-draw-page {
@@ -400,12 +404,13 @@ body {
 }
 
 .ticket-panel {
-  width: 340px;
+  width: 360px;
   background: var(--paper);
-  border-left: 1px solid var(--line);
-  padding: 20px;
+  border-left: 2px solid var(--line);
+  padding: 0;
   overflow-y: auto;
-  color: var(--navy);
+  color: var(--text);
+  font-size: 15px;
 }
 
 
