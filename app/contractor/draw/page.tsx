@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import 'leaflet/dist/leaflet.css';
 import type { LatLngTuple } from 'leaflet';
-import { useMap } from 'react-leaflet';
+import type L from 'leaflet';
 import { generateDrawingPdf } from '@/lib/pdf/generateDrawingPdf';
 import type { MapView } from '@/components/MapTracker';
 
@@ -16,6 +16,7 @@ const ZoneDrawer   = dynamic(() => import('@/components/ZoneDrawer'), { ssr: fal
 const MapTracker   = dynamic(() => import('@/components/MapTracker'), { ssr: false });
 const MapSearch    = dynamic(() => import('@/components/MapSearch'), { ssr: false });
 const MapFreezer   = dynamic(() => import('@/components/MapFreezer'), { ssr: false });
+const MapCapture   = dynamic(() => import('@/components/MapCapture'), { ssr: false });
 
 const TAI_SENG_CENTER: LatLngTuple = [1.3358, 103.8879];
 const OWNER_ID = process.env.NEXT_PUBLIC_OWNER_ID ?? 'afc4cd7e-153c-47d3-a428-356058108f04';
@@ -42,15 +43,6 @@ interface Conflict {
 interface ReleaseData {
   conflicts: Conflict[];
   zoneGeoJSON: { type: string; coordinates: unknown } | null;
-}
-
-// Captures the Leaflet map instance into a ref so the parent can call
-// map.dragging.disable/enable synchronously from a button click handler —
-// without waiting for a dynamic import to load or an effect to run.
-function MapCapture({ mapRef }: { mapRef: { current: ReturnType<typeof useMap> | null } }) {
-  const map = useMap();
-  mapRef.current = map; // ref mutation during render is fine — no state, no re-render
-  return null;
 }
 
 function shoelaceAreaSqm(points: LatLngTuple[]): number {
@@ -120,7 +112,7 @@ function FomoPayModal({
 
 export default function ContractorDrawPage() {
   const router = useRouter();
-  const mapRef = useRef<ReturnType<typeof useMap> | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
   const [phase, setPhase] = useState<Phase>('idle');
   const [points, setPoints] = useState<LatLngTuple[]>([]);
   const [result, setResult] = useState<CheckResult | null>(null);
@@ -276,7 +268,7 @@ export default function ContractorDrawPage() {
             style={{ height: '100%', width: '100%' }}
           >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-            <MapCapture mapRef={mapRef} />
+            <MapCapture onMap={(m) => { mapRef.current = m; }} />
             <MapFreezer frozen={phase === 'drawing'} />
             <MapSearch disabled={phase === 'drawing'} />
             <ZoneDrawer
