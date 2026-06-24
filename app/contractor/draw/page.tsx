@@ -13,6 +13,7 @@ const TileLayer    = dynamic(() => import('react-leaflet').then((m) => m.TileLay
 const ZoneDrawer   = dynamic(() => import('@/components/ZoneDrawer'), { ssr: false });
 const MapTracker   = dynamic(() => import('@/components/MapTracker'), { ssr: false });
 const MapSearch    = dynamic(() => import('@/components/MapSearch'), { ssr: false });
+const MapFreezer   = dynamic(() => import('@/components/MapFreezer'), { ssr: false });
 
 const TAI_SENG_CENTER: LatLngTuple = [1.3358, 103.8879];
 const OWNER_ID = 'afc4cd7e-153c-47d3-a428-356058108f04';
@@ -115,6 +116,14 @@ export default function ContractorDrawPage() {
 
   const handlePointMoved = useCallback((index: number, p: LatLngTuple) => {
     setPoints((prev) => prev.map((pt, i) => (i === index ? p : pt)));
+  }, []);
+
+  const handlePointDeleted = useCallback((index: number) => {
+    setPoints((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    setPoints((prev) => prev.slice(0, -1));
   }, []);
 
   function startDrawing() {
@@ -227,12 +236,14 @@ export default function ContractorDrawPage() {
             style={{ height: '100%', width: '100%' }}
           >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <MapFreezer frozen={phase === 'drawing'} />
             <MapSearch disabled={phase === 'drawing'} />
             <ZoneDrawer
               active={phase === 'drawing'}
               points={points}
               onPointAdded={handlePointAdded}
               onPointMoved={handlePointMoved}
+              onPointDeleted={handlePointDeleted}
               onDoubleClickFinish={finishDrawing}
             />
             <MapTracker onChange={setMapView} />
@@ -288,7 +299,7 @@ export default function ContractorDrawPage() {
                   <span className="v">{points.length}</span>
                 </div>
                 <p className="step-empty" style={{ marginTop: 12 }}>
-                  Click on the map to add points. Drag any dot to adjust. Double-click to finish.
+                  Click on the map to add points. <strong>Right-click any dot</strong> to delete it. Drag a dot to reposition. Double-click to finish.
                 </p>
                 <button
                   className="btn btn-primary"
@@ -297,7 +308,8 @@ export default function ContractorDrawPage() {
                 >
                   ✓ Done ({points.length} points)
                 </button>
-                <button className="btn btn-ghost" onClick={resetAll}>✕ Clear</button>
+                <button className="btn btn-ghost" onClick={handleUndo} disabled={points.length === 0}>↩ Undo last point</button>
+                <button className="btn btn-ghost" onClick={resetAll}>✕ Clear all</button>
               </div>
             </>
           )}

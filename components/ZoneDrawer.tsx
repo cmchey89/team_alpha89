@@ -10,46 +10,35 @@ interface ZoneDrawerProps {
   points: LatLngTuple[];
   onPointAdded: (point: LatLngTuple) => void;
   onPointMoved: (index: number, point: LatLngTuple) => void;
+  onPointDeleted: (index: number) => void;
   onDoubleClickFinish: () => void;
 }
 
-export default function ZoneDrawer({ active, points, onPointAdded, onPointMoved, onDoubleClickFinish }: ZoneDrawerProps) {
+export default function ZoneDrawer({
+  active, points, onPointAdded, onPointMoved, onPointDeleted, onDoubleClickFinish,
+}: ZoneDrawerProps) {
   const map = useMap();
   const markerLayerRef = useRef<L.LayerGroup | null>(null);
   const polygonLayerRef = useRef<L.Polygon | null>(null);
-  // Pixel coords of the zone polygon for the SVG mask overlay
   const [pixelPoints, setPixelPoints] = useState<{ x: number; y: number }[]>([]);
   const [mapSize, setMapSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
 
-  // Freeze/unfreeze map pan when entering/leaving drawing mode
+  // Set crosshair cursor when active
   useEffect(() => {
     if (!map) return;
-    if (active) {
-      map.dragging.disable();
-      map.getContainer().style.cursor = 'crosshair';
-    } else {
-      map.dragging.enable();
-      map.getContainer().style.cursor = '';
-    }
-    return () => {
-      map.dragging.enable();
-      map.getContainer().style.cursor = '';
-    };
+    map.getContainer().style.cursor = active ? 'crosshair' : '';
+    return () => { map.getContainer().style.cursor = ''; };
   }, [map, active]);
 
-  // Recompute pixel points for SVG mask whenever points change
+  // Recompute pixel points for the SVG mask overlay
   useEffect(() => {
-    if (!map || !active) {
-      setPixelPoints([]);
-      return;
-    }
+    if (!map || !active) { setPixelPoints([]); return; }
     const size = map.getSize();
     setMapSize({ w: size.x, h: size.y });
-    const px = points.map((pt) => {
+    setPixelPoints(points.map((pt) => {
       const p = map.latLngToContainerPoint([pt[0], pt[1]]);
       return { x: p.x, y: p.y };
-    });
-    setPixelPoints(px);
+    }));
   }, [map, active, points]);
 
   useMapEvents({
@@ -63,38 +52,24 @@ export default function ZoneDrawer({ active, points, onPointAdded, onPointMoved,
     },
   });
 
-  // Polygon overlay via Leaflet layer
+  // Leaflet polygon outline
   useEffect(() => {
     if (!map) return;
-    if (polygonLayerRef.current) {
-      map.removeLayer(polygonLayerRef.current);
-      polygonLayerRef.current = null;
-    }
+    if (polygonLayerRef.current) { map.removeLayer(polygonLayerRef.current); polygonLayerRef.current = null; }
     if (points.length >= 2) {
-      const poly = L.polygon(points as L.LatLngTuple[], {
-        color: '#0072CE',
-        weight: 2,
-        fillColor: '#0072CE',
-        fillOpacity: 0,
+      polygonLayerRef.current = L.polygon(points as L.LatLngTuple[], {
+        color: '#0072CE', weight: 2,
+        fillColor: '#0072CE', fillOpacity: 0,
         dashArray: active ? '6,5' : undefined,
       }).addTo(map);
-      polygonLayerRef.current = poly;
     }
-    return () => {
-      if (polygonLayerRef.current) {
-        map.removeLayer(polygonLayerRef.current);
-        polygonLayerRef.current = null;
-      }
-    };
+    return () => { if (polygonLayerRef.current) { map.removeLayer(polygonLayerRef.current); polygonLayerRef.current = null; } };
   }, [map, points, active]);
 
-  // Draggable vertex markers
+  // Draggable + right-click-deletable vertex markers
   useEffect(() => {
     if (!map) return;
-    if (markerLayerRef.current) {
-      markerLayerRef.current.clearLayers();
-      map.removeLayer(markerLayerRef.current);
-    }
+    if (markerLayerRef.current) { markerLayerRef.current.clearLayers(); map.removeLayer(markerLayerRef.current); }
     if (!active || points.length === 0) return;
 
     const group = L.layerGroup().addTo(map);
@@ -102,24 +77,25 @@ export default function ZoneDrawer({ active, points, onPointAdded, onPointMoved,
 
     points.forEach((pt, i) => {
       const marker = L.circleMarker([pt[0], pt[1]], {
-        radius: 6,
-        color: '#0072CE',
-        fillColor: '#ffffff',
-        fillOpacity: 1,
-        weight: 2,
+        radius: 7, color: '#0072CE', fillColor: '#ffffff', fillOpacity: 1, weight: 2,
       });
       marker.addTo(group);
 
+      // Left-drag to move
       marker.on('mousedown', (downEvt: L.LeafletMouseEvent) => {
         L.DomEvent.stopPropagation(downEvt);
         const onMove = (e: L.LeafletMouseEvent) => { marker.setLatLng(e.latlng); };
-        const onUp = (e: L.LeafletMouseEvent) => {
-          map.off('mousemove', onMove);
-          map.off('mouseup', onUp);
+        const onUp   = (e: L.LeafletMouseEvent) => {
+          map.off('mousemove', onMove); map.off('mouseup', onUp);
           onPointMoved(i, [e.latlng.lat, e.latlng.lng]);
         };
-        map.on('mousemove', onMove);
-        map.on('mouseup', onUp);
+        map.on('mousemove', onMove); map.on('mouseup', onUp);
+      });
+
+      // Right-click to delete this vertex
+      marker.on('contextmenu', (e: L.LeafletMouseEvent) => {
+        L.DomEvent.stopPropagation(e);
+        onPointDeleted(i);
       });
 
       marker.on('mouseover', () => { map.getContainer().style.cursor = 'grab'; });
@@ -127,56 +103,25 @@ export default function ZoneDrawer({ active, points, onPointAdded, onPointMoved,
     });
 
     return () => {
-      if (markerLayerRef.current) {
-        markerLayerRef.current.clearLayers();
-        map.removeLayer(markerLayerRef.current);
-        markerLayerRef.current = null;
-      }
+      if (markerLayerRef.current) { markerLayerRef.current.clearLayers(); map.removeLayer(markerLayerRef.current); markerLayerRef.current = null; }
     };
-  }, [map, active, points, onPointMoved]);
+  }, [map, active, points, onPointMoved, onPointDeleted]);
 
-  // SVG mask: dims entire map except inside the drawn zone
+  // SVG mask: dim everything outside the forming polygon
   if (!active || pixelPoints.length < 2 || mapSize.w === 0) return null;
-
-  const polyStr = pixelPoints.map((p) => `${p.x},${p.y}`).join(' ');
+  const polyStr = pixelPoints.map(p => `${p.x},${p.y}`).join(' ');
 
   return (
-    <div
-      style={{
-        position: 'absolute', inset: 0, zIndex: 450, pointerEvents: 'none',
-      }}
-    >
-      <svg
-        width={mapSize.w}
-        height={mapSize.h}
-        style={{ display: 'block' }}
-      >
+    <div style={{ position: 'absolute', inset: 0, zIndex: 450, pointerEvents: 'none' }}>
+      <svg width={mapSize.w} height={mapSize.h} style={{ display: 'block' }}>
         <defs>
           <mask id="zone-reveal">
-            {/* White = show dim overlay; black = punch through (clear) */}
             <rect width={mapSize.w} height={mapSize.h} fill="white" />
-            {pixelPoints.length >= 3 && (
-              <polygon points={polyStr} fill="black" />
-            )}
+            {pixelPoints.length >= 3 && <polygon points={polyStr} fill="black" />}
           </mask>
         </defs>
-        {/* Dim layer — covers everything except the zone polygon */}
-        <rect
-          width={mapSize.w}
-          height={mapSize.h}
-          fill="rgba(0,20,60,0.45)"
-          mask="url(#zone-reveal)"
-        />
-        {/* Blue dashed border around the zone */}
-        {pixelPoints.length >= 2 && (
-          <polygon
-            points={polyStr}
-            fill="none"
-            stroke="#0072CE"
-            strokeWidth={2}
-            strokeDasharray="6,5"
-          />
-        )}
+        <rect width={mapSize.w} height={mapSize.h} fill="rgba(0,20,60,0.45)" mask="url(#zone-reveal)" />
+        <polygon points={polyStr} fill="none" stroke="#0072CE" strokeWidth={2} strokeDasharray="6,5" />
       </svg>
     </div>
   );
