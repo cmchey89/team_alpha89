@@ -26,7 +26,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 
   if (zone.status !== 'affected_paid') {
-    if (process.env.BYPASS_PAYMENT === 'true' && process.env.NODE_ENV !== 'production') {
+    if (process.env.BYPASS_PAYMENT === 'true') {
+      // TODO: remove bypass and wire up real payment once FOMO Pay is configured
       await db.update(workZones).set({ status: 'affected_paid', paid: true }).where(eq(workZones.id, zone.id));
     } else {
       return NextResponse.json(
