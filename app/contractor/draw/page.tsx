@@ -217,9 +217,9 @@ export default function ContractorDrawPage() {
         <div className="map-area">
           <MapContainer
             center={TAI_SENG_CENTER}
-            zoom={17}
-            minZoom={16}
-            maxZoom={18}
+            zoom={18}
+            minZoom={17}
+            maxZoom={19}
             scrollWheelZoom={false}
             doubleClickZoom={false}
             zoomControl={false}
@@ -235,20 +235,6 @@ export default function ContractorDrawPage() {
             />
             <MapTracker onChange={setMapView} />
           </MapContainer>
-
-          {/* Map toolbar — top-left */}
-          <div className="map-toolbar">
-            <button
-              className={`map-toolbar-btn${phase === 'drawing' ? ' active' : ''}`}
-              onClick={() => {
-                if (phase === 'drawing') finishDrawing();
-                else startDrawing();
-              }}
-            >
-              {phase === 'drawing' ? `✓ Done (${points.length} pts)` : '▱ Draw zone'}
-            </button>
-            <button className="map-toolbar-btn danger" onClick={resetAll}>✕ Clear</button>
-          </div>
 
           {/* Legend — bottom-right */}
           <div className="map-legend">
@@ -281,9 +267,9 @@ export default function ContractorDrawPage() {
               </div>
               <div className="ticket-body">
                 <p className="step-empty">
-                  Click <strong>▱ Draw zone</strong> in the top-left of the map, then click points to outline the area you plan to work in.
-                  Click <strong>✓ Done</strong> when finished.
+                  Click points on the map to outline the area you plan to work in. Drag any vertex to adjust it, then click Done when finished.
                 </p>
+                <button className="btn btn-primary" onClick={startDrawing}>▱ Draw zone</button>
               </div>
             </>
           )}
@@ -300,8 +286,16 @@ export default function ContractorDrawPage() {
                   <span className="v">{points.length}</span>
                 </div>
                 <p className="step-empty" style={{ marginTop: 12 }}>
-                  Click to add points. Drag any vertex to adjust it. Double-click or click <strong>✓ Done</strong> to finish.
+                  Click on the map to add points. Drag any dot to adjust. Double-click to finish.
                 </p>
+                <button
+                  className="btn btn-primary"
+                  onClick={finishDrawing}
+                  disabled={points.length < 3}
+                >
+                  ✓ Done ({points.length} points)
+                </button>
+                <button className="btn btn-ghost" onClick={resetAll}>✕ Clear</button>
               </div>
             </>
           )}
@@ -319,6 +313,7 @@ export default function ContractorDrawPage() {
                 </p>
                 <button className="btn btn-primary" onClick={submitForCheck}>Confirm &amp; submit</button>
                 <button className="btn btn-ghost" onClick={startDrawing}>Redraw zone</button>
+                <button className="btn btn-ghost" onClick={resetAll}>✕ Clear</button>
               </div>
             </>
           )}

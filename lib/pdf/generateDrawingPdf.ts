@@ -139,19 +139,55 @@ export async function generateDrawingPdf(data: DrawingData) {
   const lats  = allCoords.map((c) => c[1]);
   let minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
   let minLat = Math.min(...lats),  maxLat  = Math.max(...lats);
-  // 40 % padding so the zone isn't crammed edge-to-edge
   const padLng = Math.max((maxLng - minLng) * 0.4, 0.003);
   const padLat = Math.max((maxLat - minLat) * 0.4, 0.003);
   minLng -= padLng; maxLng += padLng;
   minLat -= padLat; maxLat += padLat;
 
-  // Tile zoom: clamp between 14 and 17 for good street-level resolution
-  const rawZoom = data.mapView?.zoom ?? 16;
-  const tileZoom = Math.min(17, Math.max(14, rawZoom));
+  // Tile zoom: clamp to street level
+  const rawZoom = data.mapView?.zoom ?? 17;
+  const tileZoom = Math.min(19, Math.max(15, rawZoom));
 
+  // Web Mercator helpers — same projection OSM tiles use, so overlay matches tiles exactly
+  function latToMerc(lat: number) {
+    const rad = lat * Math.PI / 180;
+    return Math.log(Math.tan(Math.PI / 4 + rad / 2));
+  }
+  const mercMinY = latToMerc(minLat);
+  const mercMaxY = latToMerc(maxLat);
+
+  // Adjust bounding box so the map rect aspect ratio matches Mercator projection
+  // (prevents horizontal or vertical stretch)
+  const lngSpanDeg  = maxLng - minLng;
+  const mercSpan    = mercMaxY - mercMinY;
+  // natural aspect ratio in Mercator: lngSpan / mercSpan
+  const naturalRatio = lngSpanDeg / mercSpan;
+  const pageRatio    = mapW / mapH;
+  if (naturalRatio > pageRatio) {
+    // bbox wider than page — pad vertically
+    const targetMercSpan = lngSpanDeg / pageRatio;
+    const midMerc = (mercMinY + mercMaxY) / 2;
+    const newMercMin = midMerc - targetMercSpan / 2;
+    const newMercMax = midMerc + targetMercSpan / 2;
+    minLat = (2 * Math.atan(Math.exp(newMercMin)) - Math.PI / 2) * 180 / Math.PI;
+    maxLat = (2 * Math.atan(Math.exp(newMercMax)) - Math.PI / 2) * 180 / Math.PI;
+  } else {
+    // bbox taller than page — pad horizontally
+    const targetLngSpan = mercSpan * pageRatio;
+    const midLng = (minLng + maxLng) / 2;
+    minLng = midLng - targetLngSpan / 2;
+    maxLng = midLng + targetLngSpan / 2;
+  }
+
+  // Recompute Mercator bounds after adjustment
+  const mercMin = latToMerc(minLat);
+  const mercMax = latToMerc(maxLat);
+
+  // project() uses Web Mercator — matches tile positions exactly
   function project(lng: number, lat: number): [number, number] {
     const x = mapX + ((lng - minLng) / (maxLng - minLng)) * mapW;
-    const y = mapY + mapH - ((lat - minLat) / (maxLat - minLat)) * mapH;
+    const merc = latToMerc(lat);
+    const y = mapY + ((mercMax - merc) / (mercMax - mercMin)) * mapH;
     return [x, y];
   }
 
