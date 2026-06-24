@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { useMap } from 'react-leaflet';
 
 export default function MapFreezer({ frozen }: { frozen: boolean }) {
   const map = useMap();
-  useEffect(() => {
+  // useLayoutEffect fires synchronously before the browser paints, so the map
+  // is frozen/unfrozen in the same frame as the button click — no visible gap.
+  useLayoutEffect(() => {
     if (!map) return;
     if (frozen) {
       map.dragging.disable();
