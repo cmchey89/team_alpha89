@@ -305,18 +305,18 @@ export async function generateDrawingPdf(data: DrawingData) {
     doc.setFontSize(6.5);
     doc.setTextColor(...labelColor);
     doc.text(label.toUpperCase(), bx + 8, cy2);
-    cy2 += 5;
+    cy2 += 9;  // label height + gap before value
     // bold value
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(11);
     doc.setTextColor(...valueColor);
     doc.text(value, bx + 8, cy2, { maxWidth: bw - 12 });
-    cy2 += 5;
+    cy2 += 10; // value height + gap before divider
     // divider
     doc.setDrawColor(...divColor);
     doc.setLineWidth(0.3);
     doc.line(bx + 4, cy2, bx + bw - 4, cy2);
-    cy2 += 8;
+    cy2 += 10; // gap after divider before next label
   }
 
   // Contractor company: derive from email (part before @)
@@ -348,65 +348,27 @@ export async function generateDrawingPdf(data: DrawingData) {
   doc.setFontSize(6.5);
   doc.setTextColor(...labelColor);
   doc.text('LEGEND', bx + 8, cy2);
-  cy2 += 6;
+  cy2 += 10;
 
   // Working zone swatch
   doc.setFillColor(58, 125, 92);
-  doc.rect(bx + 8, cy2 - 4, 10, 6, 'F');
-  doc.setFontSize(8);
+  doc.rect(bx + 8, cy2 - 5, 12, 7, 'F');
+  doc.setFontSize(8.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...valueColor);
-  doc.text('Working zone', bx + 22, cy2);
-  cy2 += 9;
+  doc.text('Working zone', bx + 24, cy2);
+  cy2 += 13;
 
   // Affected utility line swatch (only if there are conflicts)
   if (data.conflicts.length > 0) {
-    // Use the first conflict's color
     const firstType = data.conflicts[0].utilityType;
     const [sr, sg, sb] = hexToRgb(UTILITY_COLORS[firstType] || '#9E9E9E');
     doc.setFillColor(sr, sg, sb);
-    doc.rect(bx + 8, cy2 - 4, 10, 6, 'F');
-    doc.setFontSize(8);
+    doc.rect(bx + 8, cy2 - 5, 12, 7, 'F');
+    doc.setFontSize(8.5);
     doc.setTextColor(...valueColor);
-    doc.text('Affected utility line', bx + 22, cy2);
-    cy2 += 9;
-  }
-
-  // ---- Affected lines list ----
-  if (data.conflicts.length > 0) {
-    cy2 += 4;
-    doc.setDrawColor(...divColor);
-    doc.setLineWidth(0.3);
-    doc.line(bx + 4, cy2, bx + bw - 4, cy2);
-    cy2 += 7;
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(6.5);
-    doc.setTextColor(...labelColor);
-    doc.text('AFFECTED LINES', bx + 8, cy2);
-    cy2 += 7;
-
-    const MAX_LISTED = 10;
-    const maxY = by + bh - 28;
-    const toList = data.conflicts.slice(0, MAX_LISTED);
-    for (const c of toList) {
-      if (cy2 > maxY) break;
-      const typeLabel = UTILITY_LABELS[c.utilityType] || c.utilityType;
-      const shortId = c.infraLineId ? c.infraLineId.slice(0, 8) : '';
-      const line = `${typeLabel} (infra_${shortId})`;
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...valueColor);
-      const wrapped = doc.splitTextToSize(line, bw - 16);
-      doc.text(wrapped, bx + 8, cy2);
-      cy2 += wrapped.length * 9 + 1;
-    }
-    if (data.conflicts.length > MAX_LISTED) {
-      doc.setFontSize(7);
-      doc.setFont('helvetica', 'italic');
-      doc.setTextColor(...labelColor);
-      doc.text(`+ ${data.conflicts.length - MAX_LISTED} more`, bx + 8, cy2);
-    }
+    doc.text('Affected utility line', bx + 24, cy2);
+    cy2 += 13;
   }
 
   // ---- Footer note pinned to bottom of banner ----
