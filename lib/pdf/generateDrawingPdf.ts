@@ -210,28 +210,33 @@ async function _generate(data: DrawingData) {
   let mercMin = latMerc(minLat);
   let mercMax = latMerc(maxLat);
 
-  const lngSpanDeg   = maxLng - minLng;
-  const mercSpan     = mercMax - mercMin;
-  const naturalRatio = lngSpanDeg / mercSpan;
-  const pageRatio    = mapW / mapH;
+  const lngSpanDeg  = maxLng - minLng;
+  const mercSpan    = mercMax - mercMin;
+  const pageRatio   = mapW / mapH;
+
+  // Both axes must be in the same unit for a valid ratio comparison.
+  // Web Mercator X = lng × π/180 (radians), Y = latMerc (also radians).
+  // Longitude degrees → Mercator radians: multiply by π/180.
+  const lngSpanMerc  = lngSpanDeg * Math.PI / 180;
+  const naturalRatio = lngSpanMerc / mercSpan;
 
   if (naturalRatio > pageRatio) {
-    // wider than page — expand vertically
-    const target  = lngSpanDeg / pageRatio;
+    // bbox wider than page — expand vertically in Mercator
+    const targetMercSpan = lngSpanMerc / pageRatio;
     const midMerc = (mercMin + mercMax) / 2;
-    mercMin = midMerc - target / 2;
-    mercMax = midMerc + target / 2;
+    mercMin = midMerc - targetMercSpan / 2;
+    mercMax = midMerc + targetMercSpan / 2;
     minLat  = (2 * Math.atan(Math.exp(mercMin)) - Math.PI / 2) * 180 / Math.PI;
     maxLat  = (2 * Math.atan(Math.exp(mercMax)) - Math.PI / 2) * 180 / Math.PI;
   } else {
-    // taller than page — expand horizontally
-    const target = mercSpan * pageRatio;
+    // bbox taller than page — expand horizontally (convert Mercator back to degrees)
+    const targetLngSpan = (mercSpan * pageRatio) * 180 / Math.PI;
     const midLng = (minLng + maxLng) / 2;
-    minLng = midLng - target / 2;
-    maxLng = midLng + target / 2;
+    minLng = midLng - targetLngSpan / 2;
+    maxLng = midLng + targetLngSpan / 2;
   }
 
-  // Re-compute final Mercator bounds
+  // Re-compute final Mercator bounds after adjustment
   mercMin = latMerc(minLat);
   mercMax = latMerc(maxLat);
 
