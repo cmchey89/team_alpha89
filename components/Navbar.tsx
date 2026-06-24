@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 
-export default function Navbar({ title }: { title: string }) {
+export default function Navbar({ title, userEmail, role }: { title: string; userEmail?: string; role?: string }) {
   const router = useRouter();
 
   async function handleLogout() {
@@ -11,33 +11,27 @@ export default function Navbar({ title }: { title: string }) {
   }
 
   return (
-    <nav style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '0 20px',
-      height: '52px',
-      background: 'var(--panel)',
-      borderBottom: '1px solid var(--line)',
-      flexShrink: 0,
-    }}>
-      <span style={{ fontWeight: 700, fontSize: '15px', color: 'var(--paper)' }}>
-        DigClear <span style={{ color: 'var(--grey)', fontWeight: 400 }}>· {title}</span>
-      </span>
-      <button
-        onClick={handleLogout}
-        style={{
-          background: 'none',
-          border: '1px solid var(--line)',
-          color: 'var(--grey)',
-          padding: '6px 14px',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          fontSize: '13px',
-        }}
-      >
-        Sign out
-      </button>
+    <nav className="titleblock">
+      <div className="tb-left">
+        <div className="logo">
+          <span className="logo-dot" />
+          DIGCLEAR
+        </div>
+        {role && (
+          <div className={`mode-pill ${role}`}>
+            {role === 'contractor' ? 'CONTRACTOR VIEW' : 'OWNER SETUP'}
+          </div>
+        )}
+      </div>
+      <div className="tb-right">
+        {userEmail && (
+          <div className="user-chip">
+            <span className="pulse-dot" />
+            <span className="who">{userEmail}</span>
+          </div>
+        )}
+        <button className="text-btn" onClick={handleLogout}>Sign out</button>
+      </div>
     </nav>
   );
 }
