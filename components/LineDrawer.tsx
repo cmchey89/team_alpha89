@@ -7,6 +7,9 @@ import L from 'leaflet';
 
 const LINE_COLOR = 'rgb(255,0,255)';
 
+// Diagonal X-cross cursor (hotspot centre 10,10)
+const X_CROSS_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cline x1='2' y1='2' x2='18' y2='18' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='18' y1='2' x2='2' y2='18' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='2' y1='2' x2='18' y2='18' stroke='black' stroke-width='1.5' stroke-linecap='round'/%3E%3Cline x1='18' y1='2' x2='2' y2='18' stroke='black' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") 10 10, crosshair`;
+
 export interface DrawnLine {
   points: LatLngTuple[];
 }
@@ -37,7 +40,7 @@ export default function LineDrawer({
 
   useEffect(() => {
     if (!map) return;
-    map.getContainer().style.cursor = active ? 'crosshair' : '';
+    map.getContainer().style.cursor = active ? X_CROSS_CURSOR : '';
     return () => { map.getContainer().style.cursor = ''; };
   }, [map, active]);
 
@@ -55,7 +58,6 @@ export default function LineDrawer({
     lines.forEach((line) => {
       if (line.points.length >= 2) {
         L.polyline(line.points, { color: LINE_COLOR, weight: 4 }).addTo(group);
-        addDots(line.points, group);
       }
     });
     return () => {
