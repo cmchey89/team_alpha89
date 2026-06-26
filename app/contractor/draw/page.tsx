@@ -286,7 +286,7 @@ export default function ContractorDrawPage() {
           <MapContainer
             center={TAI_SENG_CENTER}
             zoom={17}
-            minZoom={16}
+            minZoom={14}
             maxZoom={18}
             scrollWheelZoom={false}
             doubleClickZoom={false}
