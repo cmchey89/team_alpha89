@@ -398,13 +398,10 @@ export default function ContractorDrawPage() {
                     <p className="step-empty" style={{ marginTop: 12 }}>
                       Click to add points. <strong>Right-click</strong> a dot to delete it. Drag to reposition. Double-click to finish.
                     </p>
-                    <button
-                      className="btn btn-primary"
-                      onClick={finishDrawing}
-                      disabled={points.length < 3}
-                    >
-                      ✓ Done ({points.length} points)
-                    </button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn btn-primary" style={{ flex: 1 }} onClick={finishDrawing} disabled={points.length < 3}>✓ Finish zone</button>
+                      <button className="btn btn-ghost"  style={{ flex: 1 }} onClick={() => { setPoints([]); setResult(null); setError(null); }} disabled={points.length === 0}>✕ Clear zone</button>
+                    </div>
                     <button className="btn btn-ghost" onClick={handleUndo} disabled={points.length === 0}>↩ Undo last point</button>
                   </>
                 )}
@@ -422,18 +419,17 @@ export default function ContractorDrawPage() {
                     <p className="step-empty" style={{ marginTop: 12 }}>
                       Click to place points. Double-click to finish a line segment. You can draw multiple lines.
                     </p>
-                    <button
-                      className="btn btn-ghost"
-                      onClick={handleLineFinished}
-                      disabled={currentLinePoints.length < 2}
-                    >
-                      ✓ Finish line
-                    </button>
-                    <button className="btn btn-ghost" onClick={clearLines} disabled={lines.length === 0 && currentLinePoints.length === 0}>✕ Clear lines</button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn btn-ghost" style={{ flex: 1 }} onClick={handleLineFinished} disabled={currentLinePoints.length < 2}>✓ Finish line</button>
+                      <button className="btn btn-ghost" style={{ flex: 1 }} onClick={clearLines} disabled={lines.length === 0 && currentLinePoints.length === 0}>✕ Clear lines</button>
+                    </div>
                   </>
                 )}
 
-                <button className="btn btn-ghost" onClick={resetAll}>✕ Clear all</button>
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <button className="btn btn-primary" style={{ flex: 1 }} onClick={finishDrawing} disabled={points.length < 3}>✓ Done</button>
+                  <button className="btn btn-ghost"  style={{ flex: 1 }} onClick={resetAll}>✕ Clear all</button>
+                </div>
               </div>
             </>
           )}
