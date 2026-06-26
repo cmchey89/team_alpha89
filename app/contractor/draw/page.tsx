@@ -288,7 +288,7 @@ export default function ContractorDrawPage() {
             zoom={17}
             minZoom={14}
             maxZoom={18}
-            scrollWheelZoom={false}
+            scrollWheelZoom={true}
             doubleClickZoom={false}
             zoomControl={false}
             style={{ height: '100%', width: '100%' }}
