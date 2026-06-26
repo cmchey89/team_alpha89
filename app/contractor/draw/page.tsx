@@ -180,7 +180,7 @@ export default function ContractorDrawPage() {
 
   function startDrawing() {
     mapRef.current?.dragging.disable();
-    mapRef.current?.setZoom(16);
+    mapRef.current?.setZoom(18);
     setPoints([]);
     setLines([]);
     setCurrentLinePoints([]);
