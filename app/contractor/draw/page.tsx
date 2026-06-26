@@ -9,10 +9,12 @@ import type { LatLngTuple } from 'leaflet';
 import type L from 'leaflet';
 import { generateDrawingPdf } from '@/lib/pdf/generateDrawingPdf';
 import type { MapView } from '@/components/MapTracker';
+import type { DrawnLine } from '@/components/LineDrawer';
 
 const MapContainer = dynamic(() => import('react-leaflet').then((m) => m.MapContainer), { ssr: false });
 const TileLayer    = dynamic(() => import('react-leaflet').then((m) => m.TileLayer), { ssr: false });
 const ZoneDrawer   = dynamic(() => import('@/components/ZoneDrawer'), { ssr: false });
+const LineDrawer   = dynamic(() => import('@/components/LineDrawer'), { ssr: false });
 const MapTracker   = dynamic(() => import('@/components/MapTracker'), { ssr: false });
 const MapSearch    = dynamic(() => import('@/components/MapSearch'), { ssr: false });
 const MapFreezer   = dynamic(() => import('@/components/MapFreezer'), { ssr: false });
@@ -123,6 +125,9 @@ export default function ContractorDrawPage() {
   const [showFomo, setShowFomo] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
   const [authChecked, setAuthChecked] = useState(false);
+  const [drawTool, setDrawTool] = useState<'zone' | 'line'>('zone');
+  const [lines, setLines] = useState<DrawnLine[]>([]);
+  const [currentLinePoints, setCurrentLinePoints] = useState<LatLngTuple[]>([]);
 
   // Auth guard — redirect to login if no valid session
   useEffect(() => {
@@ -155,11 +160,25 @@ export default function ContractorDrawPage() {
     setPoints((prev) => prev.slice(0, -1));
   }, []);
 
+  const handleLinePointAdded = useCallback((p: LatLngTuple) => {
+    setCurrentLinePoints((prev) => [...prev, p]);
+  }, []);
+
+  const handleLineFinished = useCallback(() => {
+    setCurrentLinePoints((prev) => {
+      if (prev.length >= 2) setLines((ls) => [...ls, { points: prev }]);
+      return [];
+    });
+  }, []);
+
   if (!authChecked) return null;
 
   function startDrawing() {
     mapRef.current?.dragging.disable();
     setPoints([]);
+    setLines([]);
+    setCurrentLinePoints([]);
+    setDrawTool('zone');
     setResult(null);
     setError(null);
     setPhase('drawing');
@@ -218,6 +237,9 @@ export default function ContractorDrawPage() {
   function resetAll() {
     mapRef.current?.dragging.enable();
     setPoints([]);
+    setLines([]);
+    setCurrentLinePoints([]);
+    setDrawTool('zone');
     setResult(null);
     setReleaseData(null);
     setError(null);
@@ -271,13 +293,20 @@ export default function ContractorDrawPage() {
             <MapFreezer frozen={phase !== 'idle'} />
             <MapSearch disabled={phase !== 'idle'} />
             <ZoneDrawer
-              active={phase === 'drawing'}
+              active={phase === 'drawing' && drawTool === 'zone'}
               frozen={phase !== 'idle'}
               points={points}
               onPointAdded={handlePointAdded}
               onPointMoved={handlePointMoved}
               onPointDeleted={handlePointDeleted}
               onDoubleClickFinish={finishDrawing}
+            />
+            <LineDrawer
+              active={phase === 'drawing' && drawTool === 'line'}
+              lines={lines}
+              currentPoints={currentLinePoints}
+              onPointAdded={handleLinePointAdded}
+              onLineFinished={handleLineFinished}
             />
             <MapTracker onChange={setMapView} />
           </MapContainer>
@@ -289,6 +318,12 @@ export default function ContractorDrawPage() {
               <span className="map-legend-swatch" style={{ background: '#FF1744' }} />
               Working zone
             </div>
+            {lines.length > 0 && (
+              <div className="map-legend-row">
+                <span className="map-legend-swatch" style={{ background: '#00E5FF' }} />
+                Work line
+              </div>
+            )}
             {(phase === 'affected_unpaid' || phase === 'affected_paid') && (
               <div className="map-legend-row">
                 <span className="map-legend-swatch" style={{ background: '#9C27B0' }} />
@@ -328,24 +363,69 @@ export default function ContractorDrawPage() {
             <>
               <div className="ticket-header">
                 <div className="eyebrow">Work request</div>
-                <h2>Drawing zone…</h2>
+                <h2>{drawTool === 'zone' ? 'Drawing zone…' : 'Drawing line…'}</h2>
               </div>
               <div className="ticket-body">
-                <div className="field-row">
-                  <span className="k">Points placed</span>
-                  <span className="v">{points.length}</span>
+                {/* Tool toggle */}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                  <button
+                    className={`btn btn-sm ${drawTool === 'zone' ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => setDrawTool('zone')}
+                  >
+                    ▱ Zone
+                  </button>
+                  <button
+                    className={`btn btn-sm ${drawTool === 'line' ? 'btn-primary' : 'btn-ghost'}`}
+                    style={drawTool === 'line' ? { background: '#00838F', borderColor: '#00838F' } : {}}
+                    onClick={() => { handleLineFinished(); setDrawTool('line'); }}
+                  >
+                    ╱ Line
+                  </button>
                 </div>
-                <p className="step-empty" style={{ marginTop: 12 }}>
-                  Click on the map to add points. <strong>Right-click any dot</strong> to delete it. Drag a dot to reposition. Double-click to finish.
-                </p>
-                <button
-                  className="btn btn-primary"
-                  onClick={finishDrawing}
-                  disabled={points.length < 3}
-                >
-                  ✓ Done ({points.length} points)
-                </button>
-                <button className="btn btn-ghost" onClick={handleUndo} disabled={points.length === 0}>↩ Undo last point</button>
+
+                {drawTool === 'zone' && (
+                  <>
+                    <div className="field-row">
+                      <span className="k">Zone points</span>
+                      <span className="v">{points.length}</span>
+                    </div>
+                    <p className="step-empty" style={{ marginTop: 12 }}>
+                      Click to add points. <strong>Right-click</strong> a dot to delete it. Drag to reposition. Double-click to finish.
+                    </p>
+                    <button
+                      className="btn btn-primary"
+                      onClick={finishDrawing}
+                      disabled={points.length < 3}
+                    >
+                      ✓ Done ({points.length} points)
+                    </button>
+                    <button className="btn btn-ghost" onClick={handleUndo} disabled={points.length === 0}>↩ Undo last point</button>
+                  </>
+                )}
+
+                {drawTool === 'line' && (
+                  <>
+                    <div className="field-row">
+                      <span className="k">Lines drawn</span>
+                      <span className="v">{lines.length}</span>
+                    </div>
+                    <div className="field-row">
+                      <span className="k">Current points</span>
+                      <span className="v">{currentLinePoints.length}</span>
+                    </div>
+                    <p className="step-empty" style={{ marginTop: 12 }}>
+                      Click to place points. Double-click to finish a line segment. You can draw multiple lines.
+                    </p>
+                    <button
+                      className="btn btn-ghost"
+                      onClick={handleLineFinished}
+                      disabled={currentLinePoints.length < 2}
+                    >
+                      ✓ Finish line
+                    </button>
+                  </>
+                )}
+
                 <button className="btn btn-ghost" onClick={resetAll}>✕ Clear all</button>
               </div>
             </>
