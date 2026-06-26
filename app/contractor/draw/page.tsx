@@ -126,6 +126,7 @@ export default function ContractorDrawPage() {
   const [userEmail, setUserEmail] = useState<string>('');
   const [authChecked, setAuthChecked] = useState(false);
   const [drawTool, setDrawTool] = useState<'zone' | 'line'>('zone');
+  const [completedZones, setCompletedZones] = useState<LatLngTuple[][]>([]);
   const [lines, setLines] = useState<DrawnLine[]>([]);
   const [currentLinePoints, setCurrentLinePoints] = useState<LatLngTuple[]>([]);
 
@@ -171,6 +172,13 @@ export default function ContractorDrawPage() {
     });
   }, []);
 
+  function handleFinishZone() {
+    setPoints((prev) => {
+      if (prev.length >= 3) setCompletedZones((zs) => [...zs, prev]);
+      return [];
+    });
+  }
+
   function clearLines() {
     setLines([]);
     setCurrentLinePoints([]);
@@ -182,6 +190,7 @@ export default function ContractorDrawPage() {
     mapRef.current?.dragging.disable();
     mapRef.current?.setZoom(18);
     setPoints([]);
+    setCompletedZones([]);
     setLines([]);
     setCurrentLinePoints([]);
     setDrawTool('zone');
@@ -191,7 +200,8 @@ export default function ContractorDrawPage() {
   }
 
   function finishDrawing() {
-    if (points.length < 3) return;
+    const allZones = [...completedZones, ...(points.length >= 3 ? [points] : [])];
+    if (allZones.length === 0) return;
     setPhase('review');
   }
 
@@ -199,24 +209,36 @@ export default function ContractorDrawPage() {
     setPhase('checking');
     setError(null);
     try {
-      const areaSqm = shoelaceAreaSqm(points);
-      const closedRing = [...points.map(([lat, lng]) => [lng, lat]), [points[0][1], points[0][0]]];
-      const res = await fetch('/api/zones/check', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ownerId: OWNER_ID,
-          geometry: { type: 'Polygon', coordinates: [closedRing] },
-          areaSqm,
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `Check failed (${res.status})`);
+      const allZones = [...completedZones, ...(points.length >= 3 ? [points] : [])];
+      if (allZones.length === 0) throw new Error('No zone to submit.');
+
+      let firstAffected: CheckResult | null = null;
+      let lastResult: CheckResult | null = null;
+
+      for (const zonePoints of allZones) {
+        const areaSqm = shoelaceAreaSqm(zonePoints);
+        const closedRing = [...zonePoints.map(([lat, lng]) => [lng, lat]), [zonePoints[0][1], zonePoints[0][0]]];
+        const res = await fetch('/api/zones/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ownerId: OWNER_ID,
+            geometry: { type: 'Polygon', coordinates: [closedRing] },
+            areaSqm,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || `Check failed (${res.status})`);
+        }
+        const data: CheckResult = await res.json();
+        lastResult = data;
+        if (!data.cleared && !firstAffected) firstAffected = data;
       }
-      const data: CheckResult = await res.json();
-      setResult(data);
-      setPhase(data.cleared ? 'clear' : 'affected_unpaid');
+
+      const finalResult = firstAffected ?? lastResult!;
+      setResult({ ...finalResult, cleared: !firstAffected });
+      setPhase(!firstAffected ? 'clear' : 'affected_unpaid');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setPhase('review');
@@ -243,6 +265,7 @@ export default function ContractorDrawPage() {
   function resetAll() {
     mapRef.current?.dragging.enable();
     setPoints([]);
+    setCompletedZones([]);
     setLines([]);
     setCurrentLinePoints([]);
     setDrawTool('zone');
@@ -302,10 +325,11 @@ export default function ContractorDrawPage() {
               active={phase === 'drawing' && drawTool === 'zone'}
               frozen={phase !== 'idle'}
               points={points}
+              completedZones={completedZones}
               onPointAdded={handlePointAdded}
               onPointMoved={handlePointMoved}
               onPointDeleted={handlePointDeleted}
-              onDoubleClickFinish={finishDrawing}
+              onDoubleClickFinish={handleFinishZone}
             />
             <LineDrawer
               active={phase === 'drawing' && drawTool === 'line'}
@@ -392,15 +416,19 @@ export default function ContractorDrawPage() {
                 {drawTool === 'zone' && (
                   <>
                     <div className="field-row">
-                      <span className="k">Zone points</span>
+                      <span className="k">Zones drawn</span>
+                      <span className="v">{completedZones.length}</span>
+                    </div>
+                    <div className="field-row">
+                      <span className="k">Current points</span>
                       <span className="v">{points.length}</span>
                     </div>
                     <p className="step-empty" style={{ marginTop: 12 }}>
-                      Click to add points. <strong>Right-click</strong> a dot to delete it. Drag to reposition. Double-click to finish.
+                      Click to add points. <strong>Right-click</strong> a dot to delete it. Drag to reposition. Double-click to finish a zone.
                     </p>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn btn-ghost" style={{ flex: 1 }} onClick={handleUndo} disabled={points.length === 0}>↩ Undo</button>
-                      <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setPoints([]); setLines([]); setCurrentLinePoints([]); setResult(null); setError(null); }} disabled={points.length === 0}>✕ Clear zone</button>
+                      <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleFinishZone} disabled={points.length < 3}>✓ Finish zone</button>
+                      <button className="btn btn-ghost"  style={{ flex: 1 }} onClick={() => { setPoints([]); setCompletedZones([]); setLines([]); setCurrentLinePoints([]); setResult(null); setError(null); }} disabled={points.length === 0 && completedZones.length === 0}>✕ Clear zone</button>
                     </div>
                   </>
                 )}
@@ -426,7 +454,7 @@ export default function ContractorDrawPage() {
                 )}
 
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <button className="btn btn-primary" style={{ flex: 1 }} onClick={finishDrawing} disabled={points.length < 3}>✓ Done</button>
+                  <button className="btn btn-primary" style={{ flex: 1 }} onClick={finishDrawing} disabled={completedZones.length === 0 && points.length < 3}>✓ Done</button>
                   <button className="btn btn-ghost"  style={{ flex: 1 }} onClick={resetAll}>✕ Clear all</button>
                 </div>
               </div>

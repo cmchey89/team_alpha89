@@ -9,6 +9,7 @@ interface ZoneDrawerProps {
   active: boolean;
   frozen: boolean; // true in all non-idle phases — drives the dim overlay
   points: LatLngTuple[];
+  completedZones: LatLngTuple[][];
   onPointAdded: (point: LatLngTuple) => void;
   onPointMoved: (index: number, point: LatLngTuple) => void;
   onPointDeleted: (index: number) => void;
@@ -18,12 +19,13 @@ interface ZoneDrawerProps {
 const ZONE_RED = '#FF1744';
 
 export default function ZoneDrawer({
-  active, frozen, points, onPointAdded, onPointMoved, onPointDeleted, onDoubleClickFinish,
+  active, frozen, points, completedZones, onPointAdded, onPointMoved, onPointDeleted, onDoubleClickFinish,
 }: ZoneDrawerProps) {
   const map = useMap();
-  const markerLayerRef  = useRef<L.LayerGroup | null>(null);
-  const polygonLayerRef = useRef<L.Polygon | null>(null);
-  const pendingClickRef = useRef<{ timer: ReturnType<typeof setTimeout>; latlng: L.LatLng } | null>(null);
+  const markerLayerRef    = useRef<L.LayerGroup | null>(null);
+  const polygonLayerRef   = useRef<L.Polygon | null>(null);
+  const completedLayerRef = useRef<L.LayerGroup | null>(null);
+  const pendingClickRef   = useRef<{ timer: ReturnType<typeof setTimeout>; latlng: L.LatLng } | null>(null);
 
   // Set crosshair cursor when active
   useEffect(() => {
@@ -71,7 +73,24 @@ export default function ZoneDrawer({
     },
   });
 
-  // Leaflet polygon outline (red)
+  // Render completed zones as solid red polygons
+  useEffect(() => {
+    if (!map) return;
+    if (completedLayerRef.current) { completedLayerRef.current.clearLayers(); map.removeLayer(completedLayerRef.current); completedLayerRef.current = null; }
+    if (completedZones.length === 0) return;
+    const group = L.layerGroup().addTo(map);
+    completedLayerRef.current = group;
+    completedZones.forEach((zonePoints) => {
+      if (zonePoints.length >= 3) {
+        L.polygon(zonePoints as L.LatLngTuple[], { color: ZONE_RED, weight: 2, fillColor: ZONE_RED, fillOpacity: 0 }).addTo(group);
+      }
+    });
+    return () => {
+      if (completedLayerRef.current) { completedLayerRef.current.clearLayers(); map.removeLayer(completedLayerRef.current); completedLayerRef.current = null; }
+    };
+  }, [map, completedZones]);
+
+  // Leaflet polygon outline (red) — in-progress zone
   useEffect(() => {
     if (!map) return;
     if (polygonLayerRef.current) { map.removeLayer(polygonLayerRef.current); polygonLayerRef.current = null; }
