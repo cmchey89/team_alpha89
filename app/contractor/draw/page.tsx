@@ -180,7 +180,7 @@ export default function ContractorDrawPage() {
 
   function startDrawing() {
     mapRef.current?.dragging.disable();
-    mapRef.current?.setZoom(14);
+    mapRef.current?.setZoom(16);
     setPoints([]);
     setLines([]);
     setCurrentLinePoints([]);
@@ -287,8 +287,8 @@ export default function ContractorDrawPage() {
           <MapContainer
             center={TAI_SENG_CENTER}
             zoom={17}
-            minZoom={14}
-            maxZoom={18}
+            minZoom={16}
+            maxZoom={20}
             scrollWheelZoom={true}
             doubleClickZoom={false}
             zoomControl={false}
