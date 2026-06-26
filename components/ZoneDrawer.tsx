@@ -7,7 +7,7 @@ import L from 'leaflet';
 
 interface ZoneDrawerProps {
   active: boolean;
-  frozen: boolean; // true in both locked + drawing phases — drives the dim overlay
+  frozen: boolean; // true in all non-idle phases — drives the dim overlay
   points: LatLngTuple[];
   onPointAdded: (point: LatLngTuple) => void;
   onPointMoved: (index: number, point: LatLngTuple) => void;
@@ -15,7 +15,7 @@ interface ZoneDrawerProps {
   onDoubleClickFinish: () => void;
 }
 
-const ZONE_RED = '#D32F2F';
+const ZONE_RED = '#FF1744';
 
 export default function ZoneDrawer({
   active, frozen, points, onPointAdded, onPointMoved, onPointDeleted, onDoubleClickFinish,
@@ -130,7 +130,7 @@ export default function ZoneDrawer({
     };
   }, [map, active, points, onPointMoved, onPointDeleted]);
 
-  // Dim overlay — shows when frozen (locked + drawing phases)
+  // Dim overlay — shows when frozen (all non-idle phases)
   // Zone interior is punched clear once 3+ points are placed
   if (!frozen || mapSize.w === 0) return null;
   const polyStr = pixelPoints.length >= 2 ? pixelPoints.map(p => `${p.x},${p.y}`).join(' ') : '';
@@ -146,7 +146,7 @@ export default function ZoneDrawer({
         </defs>
         <rect width={mapSize.w} height={mapSize.h} fill="rgba(0,20,60,0.35)" mask="url(#zone-reveal)" />
         {polyStr && (
-          <polygon points={polyStr} fill="none" stroke={ZONE_RED} strokeWidth={2} strokeDasharray="6,5" />
+          <polygon points={polyStr} fill="none" stroke={ZONE_RED} strokeWidth={2} strokeDasharray={active ? '6,5' : undefined} />
         )}
       </svg>
     </div>

@@ -24,7 +24,7 @@ if (!process.env.NEXT_PUBLIC_OWNER_ID) {
   console.warn('[DigClear] NEXT_PUBLIC_OWNER_ID is not set — using hardcoded fallback UUID. Add it to Vercel environment variables.');
 }
 
-type Phase = 'idle' | 'locked' | 'drawing' | 'review' | 'checking' | 'clear' | 'affected_unpaid' | 'affected_paid';
+type Phase = 'idle' | 'drawing' | 'review' | 'checking' | 'clear' | 'affected_unpaid' | 'affected_paid';
 
 interface CheckResult {
   zoneId: string;
@@ -157,13 +157,8 @@ export default function ContractorDrawPage() {
 
   if (!authChecked) return null;
 
-  function lockMap() {
-    mapRef.current?.dragging.disable(); // synchronous — fires before any React re-render
-    setPhase('locked');
-  }
-
   function startDrawing() {
-    mapRef.current?.dragging.disable(); // re-disable in case called from review's "Redraw"
+    mapRef.current?.dragging.disable();
     setPoints([]);
     setResult(null);
     setError(null);
@@ -172,7 +167,6 @@ export default function ContractorDrawPage() {
 
   function finishDrawing() {
     if (points.length < 3) return;
-    mapRef.current?.dragging.enable();
     setPhase('review');
   }
 
@@ -262,22 +256,6 @@ export default function ContractorDrawPage() {
 
         {/* ---- Map ---- */}
         <div className="map-area">
-          {/* Lock badge — sits above ZoneDrawer's dim overlay during locked phase */}
-          {phase === 'locked' && (
-            <div style={{
-              position: 'absolute', top: '50%', left: '50%',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 510, pointerEvents: 'none',
-              background: 'rgba(0,114,206,0.92)', color: '#fff',
-              padding: '12px 22px', borderRadius: 8,
-              fontSize: 14, fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 8,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-              whiteSpace: 'nowrap',
-            }}>
-              🔒 Map locked — click Draw Zone to begin
-            </div>
-          )}
           <MapContainer
             center={TAI_SENG_CENTER}
             zoom={17}
@@ -290,11 +268,11 @@ export default function ContractorDrawPage() {
           >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapCapture onMap={(m) => { mapRef.current = m; }} />
-            <MapFreezer frozen={phase === 'locked' || phase === 'drawing'} />
-            <MapSearch disabled={phase === 'locked' || phase === 'drawing'} />
+            <MapFreezer frozen={phase !== 'idle'} />
+            <MapSearch disabled={phase !== 'idle'} />
             <ZoneDrawer
               active={phase === 'drawing'}
-              frozen={phase === 'locked' || phase === 'drawing'}
+              frozen={phase !== 'idle'}
               points={points}
               onPointAdded={handlePointAdded}
               onPointMoved={handlePointMoved}
@@ -308,7 +286,7 @@ export default function ContractorDrawPage() {
           <div className="map-legend">
             <div className="map-legend-title">Legend</div>
             <div className="map-legend-row">
-              <span className="map-legend-swatch" style={{ background: '#D32F2F' }} />
+              <span className="map-legend-swatch" style={{ background: '#FF1744' }} />
               Working zone
             </div>
             {(phase === 'affected_unpaid' || phase === 'affected_paid') && (
@@ -335,34 +313,13 @@ export default function ContractorDrawPage() {
               </div>
               <div className="ticket-body">
                 <p className="step-empty">
-                  Pan the map to your work area first, then lock the map before placing points.
+                  Pan the map to your work area, then click Draw Zone to lock the map and start placing points.
                 </p>
                 <div className="step-list">
                   <div className="step-item"><span className="step-num">1</span>Pan to your work area</div>
-                  <div className="step-item"><span className="step-num">2</span>Lock the map</div>
-                  <div className="step-item"><span className="step-num">3</span>Draw your zone</div>
+                  <div className="step-item"><span className="step-num">2</span>Draw your zone</div>
                 </div>
-                <button className="btn btn-primary" onClick={lockMap}>🔒 Lock map</button>
-              </div>
-            </>
-          )}
-
-          {phase === 'locked' && (
-            <>
-              <div className="ticket-header">
-                <div className="eyebrow">Work request</div>
-                <h2>Map locked</h2>
-              </div>
-              <div className="ticket-body">
-                <div className="lock-status">
-                  <span className="lock-icon">🔒</span>
-                  <span>Map is locked — panning disabled</span>
-                </div>
-                <p className="step-empty" style={{ marginTop: 12 }}>
-                  Click points on the map to outline your work zone. Right-click any dot to delete it. Double-click to finish.
-                </p>
                 <button className="btn btn-primary" onClick={startDrawing}>▱ Draw zone</button>
-                <button className="btn btn-ghost" onClick={resetAll}>↩ Unlock map</button>
               </div>
             </>
           )}
