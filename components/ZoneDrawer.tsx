@@ -129,20 +129,13 @@ export default function ZoneDrawer({
     };
   }, [map, active, points, onPointMoved, onPointDeleted]);
 
-  // SVG mask: dim everything outside the forming polygon
+  // Zone outline only — map stays fully visible while placing points
   if (!active || pixelPoints.length < 2 || mapSize.w === 0) return null;
   const polyStr = pixelPoints.map(p => `${p.x},${p.y}`).join(' ');
 
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 450, pointerEvents: 'none' }}>
       <svg width={mapSize.w} height={mapSize.h} style={{ display: 'block' }}>
-        <defs>
-          <mask id="zone-reveal">
-            <rect width={mapSize.w} height={mapSize.h} fill="white" />
-            {pixelPoints.length >= 3 && <polygon points={polyStr} fill="black" />}
-          </mask>
-        </defs>
-        <rect width={mapSize.w} height={mapSize.h} fill="rgba(0,20,60,0.45)" mask="url(#zone-reveal)" />
         <polygon points={polyStr} fill="none" stroke="#0072CE" strokeWidth={2} strokeDasharray="6,5" />
       </svg>
     </div>

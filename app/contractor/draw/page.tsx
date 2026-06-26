@@ -262,6 +262,25 @@ export default function ContractorDrawPage() {
 
         {/* ---- Map ---- */}
         <div className="map-area">
+          {/* Freeze overlay — visible only in locked phase, dims map and shows lock badge */}
+          {phase === 'locked' && (
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 500, pointerEvents: 'none',
+              background: 'rgba(0,20,60,0.35)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <div style={{
+                background: 'rgba(0,114,206,0.92)', color: '#fff',
+                padding: '12px 22px', borderRadius: 8,
+                fontSize: 14, fontWeight: 600,
+                display: 'flex', alignItems: 'center', gap: 8,
+                boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+                letterSpacing: '0.01em',
+              }}>
+                🔒 Map locked — click Draw Zone to begin
+              </div>
+            </div>
+          )}
           <MapContainer
             center={TAI_SENG_CENTER}
             zoom={17}
