@@ -335,6 +335,7 @@ export default function ContractorDrawPage() {
               active={phase === 'drawing' && drawTool === 'line'}
               lines={lines}
               currentPoints={currentLinePoints}
+              workZones={[...completedZones, ...(points.length >= 3 ? [points] : [])]}
               onPointAdded={handleLinePointAdded}
               onLineFinished={handleLineFinished}
             />

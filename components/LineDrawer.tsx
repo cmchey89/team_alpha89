@@ -7,6 +7,23 @@ import L from 'leaflet';
 
 const LINE_COLOR = 'rgb(255,0,255)';
 
+// Ray-casting point-in-polygon test
+function pointInPolygon(lat: number, lng: number, polygon: LatLngTuple[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [lat_i, lng_i] = polygon[i];
+    const [lat_j, lng_j] = polygon[j];
+    if (((lng_i > lng) !== (lng_j > lng)) && (lat < (lat_j - lat_i) * (lng - lng_i) / (lng_j - lng_i) + lat_i)) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+function insideAnyZone(lat: number, lng: number, zones: LatLngTuple[][]): boolean {
+  return zones.some((zone) => zone.length >= 3 && pointInPolygon(lat, lng, zone));
+}
+
 // Diagonal X-cross cursor (hotspot centre 10,10)
 const X_CROSS_CURSOR = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cline x1='2' y1='2' x2='18' y2='18' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='18' y1='2' x2='2' y2='18' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3Cline x1='2' y1='2' x2='18' y2='18' stroke='black' stroke-width='1.5' stroke-linecap='round'/%3E%3Cline x1='18' y1='2' x2='2' y2='18' stroke='black' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") 10 10, crosshair`;
 
@@ -18,6 +35,7 @@ interface LineDrawerProps {
   active: boolean;
   lines: DrawnLine[];
   currentPoints: LatLngTuple[];
+  workZones: LatLngTuple[][];  // line points are restricted to inside these zones
   onPointAdded: (point: LatLngTuple) => void;
   onLineFinished: () => void;
 }
@@ -31,7 +49,7 @@ function addDots(points: LatLngTuple[], group: L.LayerGroup) {
 }
 
 export default function LineDrawer({
-  active, lines, currentPoints, onPointAdded, onLineFinished,
+  active, lines, currentPoints, workZones, onPointAdded, onLineFinished,
 }: LineDrawerProps) {
   const map = useMap();
   const completedLayerRef = useRef<L.LayerGroup | null>(null);
@@ -96,6 +114,7 @@ export default function LineDrawer({
   useMapEvents({
     click(e) {
       if (!active) return;
+      if (workZones.length > 0 && !insideAnyZone(e.latlng.lat, e.latlng.lng, workZones)) return;
       if (pendingClickRef.current) clearTimeout(pendingClickRef.current);
       pendingClickRef.current = setTimeout(() => {
         pendingClickRef.current = null;

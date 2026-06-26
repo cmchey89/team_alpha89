@@ -34,21 +34,19 @@ export default function ZoneDrawer({
     return () => { map.getContainer().style.cursor = ''; };
   }, [map, active]);
 
-  // Pixel coords for SVG overlay — computed whenever frozen or active so the dim
-  // shows immediately on lock (even before any points are placed)
-  const { pixelPoints, mapSize } = useMemo(() => {
+  // Pixel coords for SVG overlay — current in-progress zone + all completed zones
+  const { pixelPoints, pixelCompletedZones, mapSize } = useMemo(() => {
     if (!map || (!active && !frozen)) {
-      return { pixelPoints: [] as { x: number; y: number }[], mapSize: { w: 0, h: 0 } };
+      return { pixelPoints: [] as { x: number; y: number }[], pixelCompletedZones: [] as { x: number; y: number }[][], mapSize: { w: 0, h: 0 } };
     }
     const size = map.getSize();
+    const toPixel = (pt: LatLngTuple) => { const p = map.latLngToContainerPoint([pt[0], pt[1]]); return { x: p.x, y: p.y }; };
     return {
       mapSize: { w: size.x, h: size.y },
-      pixelPoints: points.map((pt) => {
-        const p = map.latLngToContainerPoint([pt[0], pt[1]]);
-        return { x: p.x, y: p.y };
-      }),
+      pixelPoints: points.map(toPixel),
+      pixelCompletedZones: completedZones.map((zone) => zone.map(toPixel)),
     };
-  }, [map, active, frozen, points]);
+  }, [map, active, frozen, points, completedZones]);
 
   // Debounce single click vs double-click
   useMapEvents({
@@ -150,7 +148,7 @@ export default function ZoneDrawer({
   }, [map, active, points, onPointMoved, onPointDeleted]);
 
   // Dim overlay — shows when frozen (all non-idle phases)
-  // Zone interior is punched clear once 3+ points are placed
+  // Punches clear through every completed zone + current in-progress zone (3+ points)
   if (!frozen || mapSize.w === 0) return null;
   const polyStr = pixelPoints.length >= 2 ? pixelPoints.map(p => `${p.x},${p.y}`).join(' ') : '';
 
@@ -160,6 +158,11 @@ export default function ZoneDrawer({
         <defs>
           <mask id="zone-reveal">
             <rect width={mapSize.w} height={mapSize.h} fill="white" />
+            {/* Punch through all completed zones */}
+            {pixelCompletedZones.map((zone, i) =>
+              zone.length >= 3 ? <polygon key={i} points={zone.map(p => `${p.x},${p.y}`).join(' ')} fill="black" /> : null
+            )}
+            {/* Punch through current in-progress zone */}
             {pixelPoints.length >= 3 && <polygon points={polyStr} fill="black" />}
           </mask>
         </defs>
