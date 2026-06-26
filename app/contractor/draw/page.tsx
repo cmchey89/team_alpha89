@@ -24,7 +24,7 @@ if (!process.env.NEXT_PUBLIC_OWNER_ID) {
   console.warn('[DigClear] NEXT_PUBLIC_OWNER_ID is not set — using hardcoded fallback UUID. Add it to Vercel environment variables.');
 }
 
-type Phase = 'idle' | 'drawing' | 'review' | 'checking' | 'clear' | 'affected_unpaid' | 'affected_paid';
+type Phase = 'idle' | 'locked' | 'drawing' | 'review' | 'checking' | 'clear' | 'affected_unpaid' | 'affected_paid';
 
 interface CheckResult {
   zoneId: string;
@@ -157,8 +157,13 @@ export default function ContractorDrawPage() {
 
   if (!authChecked) return null;
 
-  function startDrawing() {
+  function lockMap() {
     mapRef.current?.dragging.disable(); // synchronous — fires before any React re-render
+    setPhase('locked');
+  }
+
+  function startDrawing() {
+    mapRef.current?.dragging.disable(); // re-disable in case called from review's "Redraw"
     setPoints([]);
     setResult(null);
     setError(null);
@@ -269,8 +274,8 @@ export default function ContractorDrawPage() {
           >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapCapture onMap={(m) => { mapRef.current = m; }} />
-            <MapFreezer frozen={phase === 'drawing'} />
-            <MapSearch disabled={phase === 'drawing'} />
+            <MapFreezer frozen={phase === 'locked' || phase === 'drawing'} />
+            <MapSearch disabled={phase === 'locked' || phase === 'drawing'} />
             <ZoneDrawer
               active={phase === 'drawing'}
               points={points}
@@ -313,9 +318,34 @@ export default function ContractorDrawPage() {
               </div>
               <div className="ticket-body">
                 <p className="step-empty">
-                  Click points on the map to outline the area you plan to work in. Drag any vertex to adjust it, then click Done when finished.
+                  Pan the map to your work area first, then lock the map before placing points.
+                </p>
+                <div className="step-list">
+                  <div className="step-item"><span className="step-num">1</span>Pan to your work area</div>
+                  <div className="step-item"><span className="step-num">2</span>Lock the map</div>
+                  <div className="step-item"><span className="step-num">3</span>Draw your zone</div>
+                </div>
+                <button className="btn btn-primary" onClick={lockMap}>🔒 Lock map</button>
+              </div>
+            </>
+          )}
+
+          {phase === 'locked' && (
+            <>
+              <div className="ticket-header">
+                <div className="eyebrow">Work request</div>
+                <h2>Map locked</h2>
+              </div>
+              <div className="ticket-body">
+                <div className="lock-status">
+                  <span className="lock-icon">🔒</span>
+                  <span>Map is locked — panning disabled</span>
+                </div>
+                <p className="step-empty" style={{ marginTop: 12 }}>
+                  Click points on the map to outline your work zone. Right-click any dot to delete it. Double-click to finish.
                 </p>
                 <button className="btn btn-primary" onClick={startDrawing}>▱ Draw zone</button>
+                <button className="btn btn-ghost" onClick={resetAll}>↩ Unlock map</button>
               </div>
             </>
           )}
