@@ -26,7 +26,7 @@ if (!process.env.NEXT_PUBLIC_OWNER_ID) {
   console.warn('[DigClear] NEXT_PUBLIC_OWNER_ID is not set — using hardcoded fallback UUID. Add it to Vercel environment variables.');
 }
 
-type Phase = 'idle' | 'drawing' | 'review' | 'checking' | 'clear' | 'affected_unpaid' | 'affected_paid';
+type Phase = 'idle' | 'browsing' | 'drawing' | 'review' | 'checking' | 'clear' | 'affected_unpaid' | 'affected_paid';
 
 interface CheckResult {
   zoneId: string;
@@ -296,11 +296,11 @@ export default function ContractorDrawPage() {
           >
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             <MapCapture onMap={(m) => { mapRef.current = m; }} />
-            <MapFreezer frozen={phase !== 'idle'} />
-            <MapSearch disabled={phase !== 'idle'} />
+            <MapFreezer frozen={phase !== 'idle' && phase !== 'browsing'} />
+            <MapSearch disabled={phase !== 'idle' && phase !== 'browsing'} />
             <ZoneDrawer
               active={phase === 'drawing' && drawTool === 'zone'}
-              frozen={phase !== 'idle'}
+              frozen={phase !== 'idle' && phase !== 'browsing'}
               points={points}
               onPointAdded={handlePointAdded}
               onPointMoved={handlePointMoved}
@@ -350,17 +350,37 @@ export default function ContractorDrawPage() {
             <>
               <div className="ticket-header">
                 <div className="eyebrow">Work request</div>
-                <h2>Draw your zone</h2>
+                <h2>Get started</h2>
               </div>
               <div className="ticket-body">
                 <p className="step-empty">
-                  Pan the map to your work area, then click Draw Zone to lock the map and start placing points.
+                  Browse the map to find your work area, then switch to draw mode to place your zone.
                 </p>
                 <div className="step-list">
-                  <div className="step-item"><span className="step-num">1</span>Pan to your work area</div>
+                  <div className="step-item"><span className="step-num">1</span>Browse to your work area</div>
                   <div className="step-item"><span className="step-num">2</span>Draw your zone</div>
                 </div>
+                <button className="btn btn-primary" onClick={() => setPhase('browsing')}>🗺 Browse map</button>
+              </div>
+            </>
+          )}
+
+          {phase === 'browsing' && (
+            <>
+              <div className="ticket-header">
+                <div className="eyebrow">Work request</div>
+                <h2>Browsing map</h2>
+              </div>
+              <div className="ticket-body">
+                <div className="lock-status">
+                  <span className="lock-icon">🗺</span>
+                  <span>Pan and zoom freely to your work area</span>
+                </div>
+                <p className="step-empty" style={{ marginTop: 12 }}>
+                  When ready, click Draw Zone — the map will lock and you can start placing points.
+                </p>
                 <button className="btn btn-primary" onClick={startDrawing}>▱ Draw zone</button>
+                <button className="btn btn-ghost" onClick={resetAll}>↩ Back</button>
               </div>
             </>
           )}
