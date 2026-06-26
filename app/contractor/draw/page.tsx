@@ -288,7 +288,7 @@ export default function ContractorDrawPage() {
             center={TAI_SENG_CENTER}
             zoom={17}
             minZoom={16}
-            maxZoom={19}
+            maxZoom={18}
             scrollWheelZoom={true}
             doubleClickZoom={false}
             zoomControl={false}
