@@ -399,10 +399,9 @@ export default function ContractorDrawPage() {
                       Click to add points. <strong>Right-click</strong> a dot to delete it. Drag to reposition. Double-click to finish.
                     </p>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn btn-primary" style={{ flex: 1 }} onClick={finishDrawing} disabled={points.length < 3}>✓ Finish zone</button>
-                      <button className="btn btn-ghost"  style={{ flex: 1 }} onClick={() => { setPoints([]); setResult(null); setError(null); }} disabled={points.length === 0}>✕ Clear zone</button>
+                      <button className="btn btn-ghost" style={{ flex: 1 }} onClick={handleUndo} disabled={points.length === 0}>↩ Undo</button>
+                      <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => { setPoints([]); setLines([]); setCurrentLinePoints([]); setResult(null); setError(null); }} disabled={points.length === 0}>✕ Clear zone</button>
                     </div>
-                    <button className="btn btn-ghost" onClick={handleUndo} disabled={points.length === 0}>↩ Undo last point</button>
                   </>
                 )}
 

@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [role, setRole] = useState<'owner' | 'contractor'>('contractor');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,13 +32,23 @@ export default function LoginPage() {
         throw new Error(data.error || (mode === 'login' ? 'Login failed.' : 'Sign up failed.'));
       }
       const { user } = await res.json();
+      setRedirecting(true);
       router.push(user.role === 'owner' ? '/owner/upload' : '/contractor/draw');
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-    } finally {
       setLoading(false);
     }
   }
+
+  if (redirecting) return (
+    <main style={{
+      minHeight: '100vh', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', gap: 16,
+    }}>
+      <div className="fomo-spinner" />
+      <p style={{ color: 'var(--grey)', fontSize: 14 }}>Signing in…</p>
+    </main>
+  );
 
   return (
     <main style={{
