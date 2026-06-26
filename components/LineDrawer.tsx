@@ -7,17 +7,24 @@ import L from 'leaflet';
 
 const LINE_COLOR = 'rgb(255,0,255)';
 
-
 export interface DrawnLine {
   points: LatLngTuple[];
 }
 
 interface LineDrawerProps {
   active: boolean;
-  lines: DrawnLine[];           // completed lines
-  currentPoints: LatLngTuple[]; // in-progress line
+  lines: DrawnLine[];
+  currentPoints: LatLngTuple[];
   onPointAdded: (point: LatLngTuple) => void;
   onLineFinished: () => void;
+}
+
+function addDots(points: LatLngTuple[], group: L.LayerGroup) {
+  points.forEach((pt) => {
+    L.circleMarker([pt[0], pt[1]], {
+      radius: 5, color: LINE_COLOR, fillColor: LINE_COLOR, fillOpacity: 1, weight: 1,
+    }).addTo(group);
+  });
 }
 
 export default function LineDrawer({
@@ -25,7 +32,7 @@ export default function LineDrawer({
 }: LineDrawerProps) {
   const map = useMap();
   const completedLayerRef = useRef<L.LayerGroup | null>(null);
-  const currentLayerRef   = useRef<L.Polyline | null>(null);
+  const currentLayerRef   = useRef<L.LayerGroup | null>(null);
   const pendingClickRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -34,12 +41,13 @@ export default function LineDrawer({
     return () => { map.getContainer().style.cursor = ''; };
   }, [map, active]);
 
-  // Render completed lines
+  // Render completed lines + their dots
   useEffect(() => {
     if (!map) return;
     if (completedLayerRef.current) {
       completedLayerRef.current.clearLayers();
       map.removeLayer(completedLayerRef.current);
+      completedLayerRef.current = null;
     }
     if (lines.length === 0) return;
     const group = L.layerGroup().addTo(map);
@@ -47,6 +55,7 @@ export default function LineDrawer({
     lines.forEach((line) => {
       if (line.points.length >= 2) {
         L.polyline(line.points, { color: LINE_COLOR, weight: 4 }).addTo(group);
+        addDots(line.points, group);
       }
     });
     return () => {
@@ -58,17 +67,27 @@ export default function LineDrawer({
     };
   }, [map, lines]);
 
-  // Render in-progress line (dashed)
+  // Render in-progress line (dashed) + dots
   useEffect(() => {
     if (!map) return;
-    if (currentLayerRef.current) { map.removeLayer(currentLayerRef.current); currentLayerRef.current = null; }
-    if (currentPoints.length >= 2) {
-      currentLayerRef.current = L.polyline(currentPoints, {
-        color: LINE_COLOR, weight: 4, dashArray: '8,5',
-      }).addTo(map);
+    if (currentLayerRef.current) {
+      currentLayerRef.current.clearLayers();
+      map.removeLayer(currentLayerRef.current);
+      currentLayerRef.current = null;
     }
+    if (currentPoints.length === 0) return;
+    const group = L.layerGroup().addTo(map);
+    currentLayerRef.current = group;
+    if (currentPoints.length >= 2) {
+      L.polyline(currentPoints, { color: LINE_COLOR, weight: 4, dashArray: '8,5' }).addTo(group);
+    }
+    addDots(currentPoints, group);
     return () => {
-      if (currentLayerRef.current) { map.removeLayer(currentLayerRef.current); currentLayerRef.current = null; }
+      if (currentLayerRef.current) {
+        currentLayerRef.current.clearLayers();
+        map.removeLayer(currentLayerRef.current);
+        currentLayerRef.current = null;
+      }
     };
   }, [map, currentPoints]);
 

@@ -171,6 +171,11 @@ export default function ContractorDrawPage() {
     });
   }, []);
 
+  function clearLines() {
+    setLines([]);
+    setCurrentLinePoints([]);
+  }
+
   if (!authChecked) return null;
 
   function startDrawing() {
@@ -423,6 +428,7 @@ export default function ContractorDrawPage() {
                     >
                       ✓ Finish line
                     </button>
+                    <button className="btn btn-ghost" onClick={clearLines} disabled={lines.length === 0 && currentLinePoints.length === 0}>✕ Clear lines</button>
                   </>
                 )}
 
