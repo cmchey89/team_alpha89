@@ -320,7 +320,7 @@ export default function ContractorDrawPage() {
             </div>
             {lines.length > 0 && (
               <div className="map-legend-row">
-                <span className="map-legend-swatch" style={{ background: '#00E5FF' }} />
+                <span className="map-legend-swatch" style={{ background: 'rgb(255,0,255)' }} />
                 Work line
               </div>
             )}
@@ -376,7 +376,7 @@ export default function ContractorDrawPage() {
                   </button>
                   <button
                     className={`btn btn-sm ${drawTool === 'line' ? 'btn-primary' : 'btn-ghost'}`}
-                    style={drawTool === 'line' ? { background: '#00838F', borderColor: '#00838F' } : {}}
+                    style={drawTool === 'line' ? { background: 'rgb(180,0,180)', borderColor: 'rgb(180,0,180)' } : {}}
                     onClick={() => { handleLineFinished(); setDrawTool('line'); }}
                   >
                     ╱ Line
