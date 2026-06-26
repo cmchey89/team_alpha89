@@ -7,6 +7,7 @@ import L from 'leaflet';
 
 interface ZoneDrawerProps {
   active: boolean;
+  frozen: boolean; // true in both locked + drawing phases — drives the dim overlay
   points: LatLngTuple[];
   onPointAdded: (point: LatLngTuple) => void;
   onPointMoved: (index: number, point: LatLngTuple) => void;
@@ -14,13 +15,14 @@ interface ZoneDrawerProps {
   onDoubleClickFinish: () => void;
 }
 
+const ZONE_RED = '#D32F2F';
+
 export default function ZoneDrawer({
-  active, points, onPointAdded, onPointMoved, onPointDeleted, onDoubleClickFinish,
+  active, frozen, points, onPointAdded, onPointMoved, onPointDeleted, onDoubleClickFinish,
 }: ZoneDrawerProps) {
   const map = useMap();
   const markerLayerRef  = useRef<L.LayerGroup | null>(null);
   const polygonLayerRef = useRef<L.Polygon | null>(null);
-  // Pending single-click timer — cancelled by dblclick to prevent spurious points
   const pendingClickRef = useRef<{ timer: ReturnType<typeof setTimeout>; latlng: L.LatLng } | null>(null);
 
   // Set crosshair cursor when active
@@ -30,9 +32,10 @@ export default function ZoneDrawer({
     return () => { map.getContainer().style.cursor = ''; };
   }, [map, active]);
 
-  // Pixel coords for SVG mask — derived synchronously, no extra render cycle
+  // Pixel coords for SVG overlay — computed whenever frozen or active so the dim
+  // shows immediately on lock (even before any points are placed)
   const { pixelPoints, mapSize } = useMemo(() => {
-    if (!map || !active || points.length === 0) {
+    if (!map || (!active && !frozen)) {
       return { pixelPoints: [] as { x: number; y: number }[], mapSize: { w: 0, h: 0 } };
     }
     const size = map.getSize();
@@ -43,11 +46,9 @@ export default function ZoneDrawer({
         return { x: p.x, y: p.y };
       }),
     };
-  }, [map, active, points]);
+  }, [map, active, frozen, points]);
 
-  // Debounce single click vs double-click:
-  // Leaflet fires click+click before dblclick, so we delay point placement
-  // by 250 ms and cancel if dblclick arrives first.
+  // Debounce single click vs double-click
   useMapEvents({
     click(e) {
       if (!active) return;
@@ -70,14 +71,14 @@ export default function ZoneDrawer({
     },
   });
 
-  // Leaflet polygon outline
+  // Leaflet polygon outline (red)
   useEffect(() => {
     if (!map) return;
     if (polygonLayerRef.current) { map.removeLayer(polygonLayerRef.current); polygonLayerRef.current = null; }
     if (points.length >= 2) {
       polygonLayerRef.current = L.polygon(points as L.LatLngTuple[], {
-        color: '#0072CE', weight: 2,
-        fillColor: '#0072CE', fillOpacity: 0,
+        color: ZONE_RED, weight: 2,
+        fillColor: ZONE_RED, fillOpacity: 0,
         dashArray: active ? '6,5' : undefined,
       }).addTo(map);
     }
@@ -86,7 +87,7 @@ export default function ZoneDrawer({
     };
   }, [map, points, active]);
 
-  // Draggable + right-click-deletable vertex markers
+  // Solid red draggable + right-click-deletable vertex markers
   useEffect(() => {
     if (!map) return;
     if (markerLayerRef.current) { markerLayerRef.current.clearLayers(); map.removeLayer(markerLayerRef.current); }
@@ -97,7 +98,7 @@ export default function ZoneDrawer({
 
     points.forEach((pt, i) => {
       const marker = L.circleMarker([pt[0], pt[1]], {
-        radius: 7, color: '#0072CE', fillColor: '#ffffff', fillOpacity: 1, weight: 2,
+        radius: 7, color: ZONE_RED, fillColor: ZONE_RED, fillOpacity: 1, weight: 2,
       });
       marker.addTo(group);
 
@@ -129,14 +130,24 @@ export default function ZoneDrawer({
     };
   }, [map, active, points, onPointMoved, onPointDeleted]);
 
-  // Zone outline only — map stays fully visible while placing points
-  if (!active || pixelPoints.length < 2 || mapSize.w === 0) return null;
-  const polyStr = pixelPoints.map(p => `${p.x},${p.y}`).join(' ');
+  // Dim overlay — shows when frozen (locked + drawing phases)
+  // Zone interior is punched clear once 3+ points are placed
+  if (!frozen || mapSize.w === 0) return null;
+  const polyStr = pixelPoints.length >= 2 ? pixelPoints.map(p => `${p.x},${p.y}`).join(' ') : '';
 
   return (
     <div style={{ position: 'absolute', inset: 0, zIndex: 450, pointerEvents: 'none' }}>
       <svg width={mapSize.w} height={mapSize.h} style={{ display: 'block' }}>
-        <polygon points={polyStr} fill="none" stroke="#0072CE" strokeWidth={2} strokeDasharray="6,5" />
+        <defs>
+          <mask id="zone-reveal">
+            <rect width={mapSize.w} height={mapSize.h} fill="white" />
+            {pixelPoints.length >= 3 && <polygon points={polyStr} fill="black" />}
+          </mask>
+        </defs>
+        <rect width={mapSize.w} height={mapSize.h} fill="rgba(0,20,60,0.35)" mask="url(#zone-reveal)" />
+        {polyStr && (
+          <polygon points={polyStr} fill="none" stroke={ZONE_RED} strokeWidth={2} strokeDasharray="6,5" />
+        )}
       </svg>
     </div>
   );
