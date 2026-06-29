@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect');
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,7 +35,7 @@ export default function LoginPage() {
       }
       const { user } = await res.json();
       setRedirecting(true);
-      router.push(user.role === 'owner' ? '/owner/upload' : '/contractor/draw');
+      router.push(redirectTo || (user.role === 'owner' ? '/owner/upload' : '/contractor/draw'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setLoading(false);
